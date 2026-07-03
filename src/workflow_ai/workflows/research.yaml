@@ -1,0 +1,67 @@
+name: research
+start: classify
+
+nodes:
+  classify:
+    role: >
+      You are a research triage analyst. Given the initial request, define the
+      precise research topic and decide which information-gathering branches are
+      worth running.
+    prompt: "Initial research request:\n{initial_prompt}"
+    schema: classify_out
+    verifier: topic_present
+    updater: store_topic
+    fan_out: true
+    allowed_tools: ["WebSearch"]
+    next:
+      search_web: "Gather facts from the public web via search."
+      read_files: "Gather facts from local project files."
+
+  search_web:
+    role: >
+      You are a web researcher. Use web search to collect discrete, sourced
+      findings on the topic. Do not speculate.
+    prompt: "Research topic:\n{data}"
+    schema: gather_out
+    verifier: nonempty_findings
+    updater: append_findings
+    allowed_tools: ["WebSearch"]
+    next:
+      synthesize: "Hand collected findings to synthesis."
+
+  read_files:
+    role: >
+      You are a codebase researcher. Read relevant local files to collect
+      discrete, sourced findings on the topic.
+    prompt: "Research topic:\n{data}"
+    schema: gather_out
+    verifier: nonempty_findings
+    updater: append_findings
+    allowed_tools: ["Read", "Grep", "Glob"]
+    next:
+      synthesize: "Hand collected findings to synthesis."
+
+  synthesize:
+    role: >
+      You are a synthesis analyst. Combine the accumulated findings into a
+      concise, honest summary and rate your confidence.
+    prompt: "Findings so far:\n{data}"
+    schema: synthesize_out
+    updater: store_summary
+    next:
+      report: "Write the final report."
+
+  report:
+    role: >
+      You are a technical writer. Write the final research report to a file and
+      return its path.
+    prompt: "Summary to write up:\n{data}"
+    schema: report_out
+    allowed_tools: ["Write"]
+    next:
+      done: "Finish the workflow."
+
+  done:
+    role: "Terminal."
+    schema: report_out
+    terminal: true

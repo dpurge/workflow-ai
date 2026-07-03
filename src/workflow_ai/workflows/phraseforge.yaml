@@ -1,0 +1,145 @@
+name: phraseforge
+start: read
+
+# Mirrors Pi's phraseforge-mdx.ts: source URL/file -> PhraseForge MDX lesson.
+# Built for a small local model: focused steps, small context slices (reads),
+# prose steps return raw text, language skill injected only where it matters,
+# transitions are code-driven (single static edge, or the detect router).
+
+nodes:
+  read:
+    kind: action
+    action: fetch_source
+    verifier: source_nonempty
+    next:
+      clean: "Hand cleaned source text to the clean step."
+
+  clean:
+    role: >
+      Clean the given source into simple, readable Markdown. Keep only the main
+      body text; drop navigation, ads, and boilerplate. Output Markdown only.
+    output_kind: text
+    produces: text
+    reads: [source]
+    prompt: "Source:\n\n{source}"
+    next:
+      detect: "Hand cleaned text to language detection."
+
+  detect:
+    role: "Identify the language of the text. Return JSON only."
+    schema: detect_out
+    reads: [text]
+    prompt: >
+      Text:
+
+      {text}
+
+
+      Return the ISO 639-3 language code, the ISO 15924 script code (lowercase),
+      and a short lesson title.
+    router: branch_on_script
+    next:
+      transcribe: "Non-Latin script: romanize the text first."
+      translate: "Latin/Cyrillic/Greek script: skip transcription, go to translation."
+
+  transcribe:
+    role: >
+      Romanize the text using the transcription system specified by the language
+      skill. Output the transcription only.
+    output_kind: text
+    produces: transcription
+    reads: [text, language, script]
+    skills: ["@lang"]
+    prompt: "Transcribe this {language} text:\n\n{text}"
+    next:
+      translate: "Hand the romanized text to translation."
+
+  translate:
+    role: >
+      Translate the text into natural Polish prose. Output the Polish
+      translation only.
+    output_kind: text
+    produces: translation
+    reads: [text]
+    prompt: "Translate to Polish:\n\n{text}"
+    next:
+      vocabulary: "Build the vocabulary list."
+
+  vocabulary:
+    role: >
+      Extract a vocabulary list from the text following the language skill's
+      rules for headword shape and grammar tags. Each entry: headword
+      (dictionary form), grammar tag, Polish translation (multiple senses joined
+      with '; '), and transcription for non-Latin scripts. Aim for 15-40 entries
+      by level. Return a JSON array only.
+    schema: vocabulary_out
+    verifier: vocab_min10
+    produces: vocabulary
+    reads: [text, transcription, translation, language, script]
+    skills: ["@lang"]
+    prompt: "Build vocabulary from this {language} text:\n\n{text}"
+    next:
+      models: "Build model phrase patterns."
+
+  models:
+    role: >
+      Build 3-6 model phrase patterns that illustrate constructions from the
+      text, each building toward a full sentence. Each: pattern (foreign), Polish
+      translation (required), transcription for non-Latin scripts. Return a JSON
+      array only.
+    schema: models_out
+    verifier: models_3_8
+    produces: models
+    reads: [text, transcription, translation]
+    skills: ["@lang"]
+    prompt: "Build model patterns from this text:\n\n{text}"
+    next:
+      grammar: "Write the grammar block."
+
+  grammar:
+    role: >
+      Write a short grammar block in Polish Markdown explaining the key grammar
+      the text exercises, using the language skill's grammar notes. Keep it
+      focused (a few paragraphs and/or a small table). Output Markdown only.
+    output_kind: text
+    produces: grammar
+    reads: [text, language, script]
+    skills: ["@lang"]
+    prompt: "Explain the key grammar in this {language} text, in Polish:\n\n{text}"
+    next:
+      questions: "Write comprehension questions."
+
+  questions:
+    role: >
+      Write 3-6 short, open-ended comprehension questions IN THE LESSON'S
+      LANGUAGE. Return a JSON array of strings.
+    schema: questions_out
+    verifier: questions_3_8
+    produces: questions
+    reads: [text, language]
+    prompt: "Write comprehension questions in {language} for this text:\n\n{text}"
+    next:
+      exercises: "Create the exercises."
+
+  exercises:
+    role: >
+      Create 4-6 exercises mixing types. Always include translation, fill-gaps,
+      word-order, and multiple-choice. Each entry has: type, instruction
+      (Polish), and items (array of strings). Return a JSON array only.
+    schema: exercises_out
+    verifier: exercises_ok
+    produces: exercises
+    reads: [text, vocabulary]
+    prompt: "Create exercises based on this text:\n\n{text}"
+    next:
+      save: "Assemble and render the lesson MDX."
+
+  save:
+    kind: action
+    action: save_lesson
+    produces: out_path
+    next:
+      done: "Lesson written."
+
+  done:
+    terminal: true
