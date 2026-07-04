@@ -3,7 +3,7 @@
 Mirrors Pi's `phraseforge-mdx.ts`:
   - actions:  fetch_source (URL/file -> cleaned text), save_lesson (assemble the
               Lesson JSON and render via Pi's mdx-export.py)
-  - router:   branch_on_script (skip transcription for latn/cyrl/grek)
+  - router:   branch_on_script (skip transcription for latn/cyrl/grek/kore)
   - verifiers: count/shape gates matching the TS thresholds
   - skill:    '@lang' -> phraseforge-lang-<iso> SKILL.md path
 """
@@ -37,7 +37,7 @@ schema("models_out")(ModelList)
 schema("questions_out")(QuestionList)
 schema("exercises_out")(ExerciseList)
 
-TRANSLITERATED = {"latn", "cyrl", "grek"}  # scripts that need NO transcription
+TRANSLITERATED = {"latn", "cyrl", "grek", "kore"}  # scripts that need NO transcription
 MAX_SOURCE_CHARS = 8000
 
 _PI_SKILLS_DIR = Path(os.environ.get("PI_SKILLS_DIR", "~/.pi/agent/skills")).expanduser()

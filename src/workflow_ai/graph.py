@@ -63,15 +63,19 @@ class WorkflowGraph(BaseModel):
     name: str
     start: str
     nodes: dict[str, NodeSpec]
+    yaml_path: Path | None = None
+
+    model_config = {"arbitrary_types_allowed": True}
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "WorkflowGraph":
-        raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        resolved = Path(path).resolve()
+        raw = yaml.safe_load(resolved.read_text(encoding="utf-8"))
         nodes = {
             node_id: NodeSpec(id=node_id, **body)
             for node_id, body in (raw.get("nodes") or {}).items()
         }
-        graph = cls(name=raw["name"], start=raw["start"], nodes=nodes)
+        graph = cls(name=raw["name"], start=raw["start"], nodes=nodes, yaml_path=resolved)
         graph.validate_dag()
         return graph
 

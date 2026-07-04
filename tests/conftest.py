@@ -6,7 +6,7 @@ from typing import Callable
 
 import json
 
-from workflow_ai import definitions  # noqa: F401 (populates registry)
+from workflow_ai import research  # noqa: F401 (populates registry)
 from workflow_ai.backends.base import AgentInvocation, AgentResult
 
 

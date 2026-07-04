@@ -21,6 +21,8 @@ nodes:
     output_kind: text
     produces: text
     reads: [source]
+    skills:
+      - ./skills/core/SKILL.md
     prompt: "Source:\n\n{source}"
     next:
       detect: "Hand cleaned text to language detection."
@@ -29,6 +31,8 @@ nodes:
     role: "Identify the language of the text. Return JSON only."
     schema: detect_out
     reads: [text]
+    skills:
+      - ./skills/core/SKILL.md
     prompt: >
       Text:
 
@@ -40,7 +44,7 @@ nodes:
     router: branch_on_script
     next:
       transcribe: "Non-Latin script: romanize the text first."
-      translate: "Latin/Cyrillic/Greek script: skip transcription, go to translation."
+      translate: "Latin/Cyrillic/Greek/Korean script: skip transcription, go to translation."
 
   transcribe:
     role: >
@@ -76,7 +80,9 @@ nodes:
     verifier: vocab_min10
     produces: vocabulary
     reads: [text, transcription, translation, language, script]
-    skills: ["@lang"]
+    skills:
+      - ./skills/core/SKILL.md
+      - "@lang"
     prompt: "Build vocabulary from this {language} text:\n\n{text}"
     next:
       models: "Build model phrase patterns."
@@ -130,6 +136,8 @@ nodes:
     verifier: exercises_ok
     produces: exercises
     reads: [text, vocabulary]
+    skills:
+      - ./skills/core/SKILL.md
     prompt: "Create exercises based on this text:\n\n{text}"
     next:
       save: "Assemble and render the lesson MDX."

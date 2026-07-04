@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from workflow_ai import lessons  # noqa: F401 (registers phraseforge logic)
+from workflow_ai import phraseforge  # noqa: F401 (registers phraseforge logic)
 from workflow_ai.backends.base import AgentInvocation
 from workflow_ai.engine import Engine
 from workflow_ai.graph import WorkflowGraph
-from workflow_ai.lessons import definitions as defs
+from workflow_ai.phraseforge import definitions as defs
 
 from conftest import ScriptedBackend
 
-WORKFLOWS = Path(__file__).parent.parent / "src" / "workflow_ai" / "workflows"
+WORKFLOWS = Path(__file__).parent.parent / "src" / "workflow_ai"
 
 
 def _responder_for(script: str):
@@ -90,7 +90,7 @@ def stub_export(monkeypatch, tmp_path):
 def _run(tmp_path, script: str, stub_export):
     src = tmp_path / "article.txt"
     src.write_text("Ein deutscher Artikel über etwas Wichtiges.", encoding="utf-8")
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "phraseforge.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "phraseforge" / "workflow.yaml")
     engine = Engine(ScriptedBackend(_responder_for(script)))
     return engine.run(
         graph,
@@ -105,7 +105,7 @@ def _run(tmp_path, script: str, stub_export):
 
 
 def test_graph_is_valid():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "phraseforge.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "phraseforge" / "workflow.yaml")
     assert graph.name == "phraseforge" and graph.start == "read"
 
 

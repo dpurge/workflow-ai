@@ -26,6 +26,8 @@ nodes:
     verifier: nonempty_findings
     updater: append_findings
     allowed_tools: ["WebSearch"]
+    skills:
+      - ./skills/web-researcher.md
     next:
       synthesize: "Hand collected findings to synthesis."
 
@@ -48,6 +50,8 @@ nodes:
     prompt: "Findings so far:\n{data}"
     schema: synthesize_out
     updater: store_summary
+    skills:
+      - ./skills/synthesis.md
     next:
       report: "Write the final report."
 

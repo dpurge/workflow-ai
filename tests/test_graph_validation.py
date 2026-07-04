@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from workflow_ai import definitions  # noqa: F401
+from workflow_ai import research  # noqa: F401
 from workflow_ai.graph import GraphError, WorkflowGraph
 
-WORKFLOWS = Path(__file__).parent.parent / "src" / "workflow_ai" / "workflows"
+WORKFLOWS = Path(__file__).parent.parent / "src" / "workflow_ai"
 
 
 def test_sample_research_workflow_is_valid():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
     assert graph.name == "research"
     assert graph.start == "classify"
 

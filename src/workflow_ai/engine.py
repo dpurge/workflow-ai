@@ -14,7 +14,7 @@ import json
 import re
 from collections import deque
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from pydantic import BaseModel, ValidationError
 
@@ -47,19 +47,25 @@ class Engine:
         root = WorkflowContext(initial_prompt=initial_prompt, data=dict(initial_data or {}))
         worklist: deque[tuple[str, WorkflowContext]] = deque([(graph.start, root)])
 
+        def emit(kind: str, node_id: str, data: dict | None = None) -> None:
+            if on_event:
+                on_event(kind, node_id, data or {})
+
         while worklist:
             node_id, context = worklist.popleft()
             node = graph.node(node_id)
-            if on_event:
-                on_event("enter", node_id)
+            emit("enter", node_id)
 
             if node.terminal:
+                emit("terminal", node_id, {"context_data": dict(context.data)})
                 result.branches.append(BranchResult(terminal_node=node_id, context=context))
                 continue
 
-            output, run = self._execute_node(node, context, retries_override, model_override)
+            output, run = self._execute_node(node, context, retries_override, model_override, emit, graph.yaml_path)
             context.record(run)
+            emit("output", node_id, {"raw_output": run.raw_output})
             context = self._apply_update(node, output, context)
+            emit("context", node_id, {"context_data": dict(context.data)})
 
             successors = self._resolve_transition(node, output, context)
             invalid = [s for s in successors if s not in node.successors]
@@ -68,6 +74,7 @@ class Engine:
                     f"node '{node.id}' routed to invalid state(s) {invalid}; "
                     f"allowed: {node.successors}"
                 )
+            emit("transition", node_id, {"successors": successors})
             for succ in successors:
                 worklist.append((succ, copy.deepcopy(context)))
 
@@ -81,21 +88,27 @@ class Engine:
         context: WorkflowContext,
         retries_override: int | None,
         model_override: str | None,
+        emit: Any = None,
+        yaml_path: Path | None = None,
     ) -> tuple[Any, NodeRun]:
         verify_fn = registry.get_verifier(node.verifier)
         retries = retries_override if retries_override is not None else node.retries
+        _emit = emit or (lambda *a, **kw: None)
 
         last_error = "unknown"
         for attempt in range(1, retries + 1):
+            _emit("attempt", node.id, {"attempt": attempt, "retries": retries})
             try:
-                output = self._produce_output(node, context, model_override, last_error, attempt)
+                output = self._produce_output(node, context, model_override, last_error, attempt, yaml_path)
             except AgentOutputError as exc:
                 last_error = str(exc)
+                _emit("retry", node.id, {"attempt": attempt, "error": last_error})
                 continue
 
             verify = verify_fn(output, context)
             if not verify.ok:
                 last_error = "; ".join(verify.errors) or "verification failed"
+                _emit("retry", node.id, {"attempt": attempt, "error": last_error})
                 continue
 
             run = NodeRun(
@@ -116,6 +129,7 @@ class Engine:
         model_override: str | None,
         last_error: str,
         attempt: int,
+        yaml_path: Path | None = None,
     ) -> Any:
         if node.kind == "action":
             payload = registry.get_action(node.action)(context)
@@ -136,7 +150,9 @@ class Engine:
             )
 
         schema = registry.get_schema(node.schema_name) if node.output_kind == "json" else None
-        skills = [registry.resolve_skill(s, context) for s in node.skills]
+        skills = _resolve_skill_paths(node.skills, context, yaml_path)
+        if skills:
+            system_prompt = _inject_skills(system_prompt, skills)
         inv = AgentInvocation(
             system_prompt=system_prompt,
             prompt=prompt,
@@ -263,6 +279,55 @@ def _extract_json(text: str) -> Any:
         return value
     except json.JSONDecodeError as exc:
         raise AgentOutputError(f"could not parse JSON from agent output: {exc}") from exc
+
+
+def _resolve_skill_paths(
+    refs: Sequence[str],
+    context: Any,
+    yaml_path: Path | None,
+) -> list[Path]:
+    """Resolve skill references to absolute Paths.
+
+    '@name' references go through the registry resolver.
+    './relative' paths are resolved against the workflow YAML's directory.
+    Absolute paths are used as-is.
+    """
+    yaml_dir = yaml_path.parent if yaml_path else None
+    resolved: list[Path] = []
+    for ref in refs:
+        path_str = registry.resolve_skill(ref, context)
+        p = Path(path_str)
+        if not p.is_absolute():
+            if yaml_dir is None:
+                raise WorkflowError(
+                    f"cannot resolve relative skill '{path_str}': workflow yaml_path is unknown"
+                )
+            p = (yaml_dir / p).resolve()
+        resolved.append(p)
+    return resolved
+
+
+def _inject_skills(system_prompt: str, skill_paths: list[Path]) -> str:
+    """Read skill files and append their content to the system prompt.
+
+    Each skill block is preceded by a preamble that tells the model the
+    absolute directory the skill file lives in, so any relative paths
+    referenced inside the skill (scripts, templates, data files) can be
+    constructed correctly by the model.
+    """
+    parts = [system_prompt]
+    for p in skill_paths:
+        if not p.exists():
+            raise WorkflowError(f"skill file not found: {p}")
+        content = p.read_text(encoding="utf-8").strip()
+        skill_dir = p.parent.resolve()
+        parts.append(
+            f"---\n"
+            f"# Skill: {p.name}\n"
+            f"# Skill directory: {skill_dir}\n\n"
+            f"{content}"
+        )
+    return "\n\n".join(parts)
 
 
 def dump_run(result: RunResult, out_dir: str | Path) -> Path:

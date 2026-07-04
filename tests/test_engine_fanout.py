@@ -7,14 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from workflow_ai import definitions  # noqa: F401
+from workflow_ai import research  # noqa: F401
 from workflow_ai.backends.base import AgentInvocation
 from workflow_ai.engine import Engine, WorkflowError, dump_run
 from workflow_ai.graph import WorkflowGraph
 
 from conftest import ScriptedBackend
 
-WORKFLOWS = Path(__file__).parent.parent / "src" / "workflow_ai" / "workflows"
+WORKFLOWS = Path(__file__).parent.parent / "src" / "workflow_ai"
 
 
 def _responder(invocation: AgentInvocation) -> dict:
@@ -37,7 +37,7 @@ def _responder(invocation: AgentInvocation) -> dict:
 
 
 def test_fanout_produces_two_terminal_branches():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
     engine = Engine(ScriptedBackend(_responder))
     result = engine.run(graph, "research the thing")
 
@@ -48,7 +48,7 @@ def test_fanout_produces_two_terminal_branches():
 
 
 def test_branches_have_isolated_context():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
     engine = Engine(ScriptedBackend(_responder))
     result = engine.run(graph, "x")
 
@@ -59,7 +59,7 @@ def test_branches_have_isolated_context():
 
 
 def test_retry_then_succeed():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
     state = {"classify_fails": 2}
 
     def flaky(invocation: AgentInvocation) -> dict:
@@ -74,7 +74,7 @@ def test_retry_then_succeed():
 
 
 def test_exhausted_retries_raises():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
 
     def always_bad(invocation: AgentInvocation) -> dict:
         if invocation.schema.__name__ == "ClassifyOut":
@@ -93,7 +93,7 @@ def test_dump_run_round_trips_unicode(tmp_path):
     Windows) and raises UnicodeEncodeError. This guards that regression.
     """
 
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
 
     def unicode_responder(invocation: AgentInvocation) -> dict:
         name = invocation.schema.__name__
@@ -118,7 +118,7 @@ def test_dump_run_round_trips_unicode(tmp_path):
 
 
 def test_invalid_transition_rejected():
-    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research.yaml")
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "research" / "workflow.yaml")
 
     def bad_transition(invocation: AgentInvocation) -> dict:
         if invocation.schema.__name__ == "SynthesizeOut":

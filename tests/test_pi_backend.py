@@ -41,7 +41,7 @@ def test_parse_ignores_non_json_and_non_assistant_lines():
 
 
 def test_argv_shape_no_tools_and_skill_paths(monkeypatch):
-    backend = PiBackend(provider="ollama", model="gemma2:9b")
+    backend = PiBackend(api_base_url="http://localhost:11434/v1", api_key="ollama", model="gemma2:9b")
     monkeypatch.setattr("workflow_ai.backends.pi.shutil.which", lambda _e: "/opt/homebrew/bin/pi")
     inv = AgentInvocation(
         system_prompt="SYS",
@@ -53,8 +53,11 @@ def test_argv_shape_no_tools_and_skill_paths(monkeypatch):
     assert argv[0] == "/opt/homebrew/bin/pi"
     assert "--mode" in argv and argv[argv.index("--mode") + 1] == "json"
     assert "--no-session" in argv and "--no-context-files" in argv
-    assert argv[argv.index("--provider") + 1] == "ollama"
+    assert "--provider" not in argv  # rewiring is via env vars, not CLI flags
     assert argv[argv.index("--model") + 1] == "gemma2:9b"
     assert "--no-tools" in argv  # empty allowed_tools -> keep the small model focused
     assert argv[argv.index("--skill") + 1] == "/abs/phraseforge-lang-deu/SKILL.md"
     assert argv[-1] == "DO IT"  # prompt is the trailing positional
+    env = backend._env()
+    assert env["OPENAI_BASE_URL"] == "http://localhost:11434/v1"
+    assert env["OPENAI_API_KEY"] == "ollama"

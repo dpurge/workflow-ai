@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from workflow_ai import definitions  # noqa: F401
+from workflow_ai import research  # noqa: F401
 from workflow_ai import registry
 from workflow_ai.models import VerifyResult, WorkflowContext
 

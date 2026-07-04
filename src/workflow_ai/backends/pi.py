@@ -6,15 +6,22 @@ Pi has no native JSON-schema enforcement, so this backend always returns
 `structured=None`; the engine extracts and validates JSON from the text for
 json nodes and retries on failure.
 
+API endpoint rewiring is done via subprocess environment variables:
+  OPENAI_BASE_URL   — redirect to OpenRouter, Ollama (v1 endpoint), Azure, etc.
+  OPENAI_API_KEY    — API key for the target endpoint.
+Pi reads these standard OpenAI-SDK env vars for its OpenAI-compatible provider.
+For Ollama: OPENAI_BASE_URL=http://host:11434/v1, OPENAI_API_KEY=ollama.
+For OpenRouter: OPENAI_BASE_URL=https://openrouter.ai/api/v1, OPENAI_API_KEY=sk-or-...
+
 Grounded against the Pi CLI (v0.80.2): --print, --mode json, --no-session,
---offline, --provider, --model, --system-prompt, --no-context-files, --tools /
---no-tools, --skill <path>. Point Pi at a local model by configuring
-~/.pi/agent/models.json (e.g. an "ollama" provider) and passing --provider/--model.
+--offline, --no-context-files, --model, --api-key, --system-prompt,
+--no-tools / --tools, --skill <path>.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from typing import Any
@@ -27,15 +34,17 @@ class PiBackend:
         self,
         executable: str = "pi",
         *,
-        provider: str | None = None,
         model: str | None = None,
+        api_base_url: str | None = None,
+        api_key: str | None = None,
         offline: bool = True,
         extra_args: list[str] | None = None,
         timeout: int | None = 600,
     ) -> None:
         self.executable = executable
-        self.provider = provider
         self.model = model
+        self.api_base_url = api_base_url
+        self.api_key = api_key
         self.offline = offline
         self.extra_args = list(extra_args or [])
         self.timeout = timeout
@@ -45,6 +54,14 @@ class PiBackend:
         if resolved is None:
             raise AgentOutputError(f"Pi executable '{self.executable}' not found on PATH")
         return resolved
+
+    def _env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        if self.api_base_url:
+            env["OPENAI_BASE_URL"] = self.api_base_url
+        if self.api_key:
+            env["OPENAI_API_KEY"] = self.api_key
+        return env
 
     def _argv(self, inv: AgentInvocation) -> list[str]:
         argv = [
@@ -59,13 +76,9 @@ class PiBackend:
         ]
         if self.offline:
             argv.append("--offline")
-        provider = self.provider
         model = inv.model or self.model
-        if provider:
-            argv += ["--provider", provider]
         if model:
             argv += ["--model", model]
-        # Keep a small local model focused: enable only requested tools, else none.
         if inv.allowed_tools:
             argv += ["--tools", ",".join(inv.allowed_tools)]
         else:
@@ -80,6 +93,7 @@ class PiBackend:
         try:
             proc = subprocess.run(
                 self._argv(inv),
+                env=self._env(),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
