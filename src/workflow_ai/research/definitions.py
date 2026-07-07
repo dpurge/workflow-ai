@@ -42,3 +42,14 @@ def store_summary(output: BaseModel, context: WorkflowContext) -> WorkflowContex
     context.data["summary"] = output.summary
     context.data["confidence"] = output.confidence
     return context
+
+
+@verifier("markdown_path")
+def markdown_path(output: BaseModel, context: WorkflowContext) -> VerifyResult:
+    path = getattr(output, "report_path", "") or ""
+    if not path.endswith(".md"):
+        return VerifyResult(
+            ok=False,
+            errors=[f"report_path must end with .md, got: {path!r}"],
+        )
+    return VerifyResult(ok=True)

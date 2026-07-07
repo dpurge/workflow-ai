@@ -38,6 +38,10 @@ class Config(BaseModel):
     out: str | None = None
     verbose: bool | None = None
     log_file: str | None = None
+    default_headers: dict[str, str] | None = None
+    api_version: str | None = None
+    azure_endpoint: str | None = None
+    copilot_config: str | None = None
     phraseforge: PhraseforgeConfig = PhraseforgeConfig()
 
 

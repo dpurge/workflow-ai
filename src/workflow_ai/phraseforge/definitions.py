@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from ..models import VerifyResult, WorkflowContext
-from ..registry import action, router, schema, skill_resolver, verifier
+from ..registry import action, router, schema, skill_resolver, updater, verifier
 from .schemas import (
     ALLOWED_EXERCISE_TYPES,
     DetectOut,
@@ -38,7 +38,7 @@ schema("questions_out")(QuestionList)
 schema("exercises_out")(ExerciseList)
 
 TRANSLITERATED = {"latn", "cyrl", "grek", "kore"}  # scripts that need NO transcription
-MAX_SOURCE_CHARS = 8000
+MAX_SOURCE_CHARS = 2500
 
 _PI_SKILLS_DIR = Path(os.environ.get("PI_SKILLS_DIR", "~/.pi/agent/skills")).expanduser()
 _MDX_EXPORT = Path(
@@ -127,6 +127,14 @@ def save_lesson(context: WorkflowContext) -> dict[str, Any]:
     if proc.returncode != 0:
         raise RuntimeError(f"mdx-export failed: {proc.stderr.strip() or proc.stdout.strip()}")
     return {"out_path": str(out_path)}
+
+
+@updater("store_clean")
+def store_clean(output: str, context: WorkflowContext) -> WorkflowContext:
+    """Store cleaned text and a short snippet for language detection."""
+    context.data["text"] = output
+    context.data["text_snippet"] = output[:400]
+    return context
 
 
 def _next_seq(out_dir: Path, date: str) -> str:

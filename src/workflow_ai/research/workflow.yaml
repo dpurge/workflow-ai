@@ -57,10 +57,11 @@ nodes:
 
   report:
     role: >
-      You are a technical writer. Write the final research report to a file and
-      return its path.
-    prompt: "Summary to write up:\n{data}"
+      You are a technical writer. Write the final research report as a Markdown
+      file with a .md extension and return its path.
+    prompt: "Summary to write up:\n{data}\n\nWrite the report as Markdown to a file whose name ends with .md"
     schema: report_out
+    verifier: markdown_path
     allowed_tools: ["Write"]
     next:
       done: "Finish the workflow."

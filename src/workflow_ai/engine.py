@@ -141,15 +141,14 @@ class Engine:
         if self.backend is None:
             raise AgentOutputError("no backend configured for a model node")
 
-        system_prompt = _build_system_prompt(node)
+        schema = registry.get_schema(node.schema_name) if node.output_kind == "json" else None
+        system_prompt = _build_system_prompt(node, schema)
         prompt = _build_user_prompt(node, context)
         if attempt > 1:
             prompt += (
                 f"\n\nYour previous attempt was rejected: {last_error}\n"
                 "Correct it and respond again."
             )
-
-        schema = registry.get_schema(node.schema_name) if node.output_kind == "json" else None
         skills = _resolve_skill_paths(node.skills, context, yaml_path)
         if skills:
             system_prompt = _inject_skills(system_prompt, skills)
@@ -225,7 +224,7 @@ def _as_raw(output: Any, produces: str | None) -> dict[str, Any]:
     return {produces or "value": output}
 
 
-def _build_system_prompt(node: NodeSpec) -> str:
+def _build_system_prompt(node: NodeSpec, schema: type | None = None) -> str:
     parts = [node.role.strip()]
     model_chosen = not node.router and (node.fan_out or len(node.successors) > 1)
     if model_chosen:
@@ -238,8 +237,31 @@ def _build_system_prompt(node: NodeSpec) -> str:
             f"Return your choice in the `{field}` field. Pick only from the listed options."
         )
     if node.output_kind == "json":
-        parts.append("Respond with JSON only, matching the required schema.")
+        if schema is not None:
+            template = json.dumps(_schema_template(schema), indent=2)
+            parts.append(
+                f"After completing any tool calls, respond with a JSON object only "
+                f"(no markdown, no extra text). Fill in every field. Example shape:\n{template}"
+            )
+        else:
+            parts.append(
+                "After completing any tool calls, respond with JSON only, matching the required schema."
+            )
     return "\n\n".join(p for p in parts if p)
+
+
+def _schema_template(model: type) -> dict[str, Any]:
+    """Return a flat {field: hint} dict for a Pydantic model — simpler for small LLMs than JSON Schema."""
+    import inspect
+    from pydantic.fields import FieldInfo
+
+    result: dict[str, Any] = {}
+    for name, field in model.model_fields.items():
+        annotation = model.__annotations__.get(name, "")
+        hint = str(annotation)
+        desc = field.description or ""
+        result[name] = f"<{hint}> {desc}".strip()
+    return result
 
 
 def _build_user_prompt(node: NodeSpec, context: WorkflowContext) -> str:
@@ -259,6 +281,13 @@ def _build_user_prompt(node: NodeSpec, context: WorkflowContext) -> str:
         raise WorkflowError(f"node '{node.id}' prompt references unknown field {exc}")
 
 
+def _repair_json(text: str) -> str:
+    """Best-effort repair for common LLM JSON mistakes."""
+    # Remove trailing commas before } or ]
+    repaired = re.sub(r",\s*([}\]])", r"\1", text)
+    return repaired
+
+
 def _extract_json(text: str) -> Any:
     """Extract the first JSON value (object or array) from possibly-fenced text."""
 
@@ -266,19 +295,32 @@ def _extract_json(text: str) -> Any:
     fence = re.search(r"```(?:json)?\s*(.+?)```", stripped, re.DOTALL)
     if fence:
         stripped = fence.group(1).strip()
+
+    for candidate in (stripped, _repair_json(stripped)):
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+        start = min((i for i in (candidate.find("{"), candidate.find("[")) if i != -1), default=-1)
+        if start != -1:
+            decoder = json.JSONDecoder()
+            try:
+                value, _ = decoder.raw_decode(candidate[start:])
+                return value
+            except json.JSONDecodeError:
+                pass
+
+    raise AgentOutputError(
+        f"could not parse JSON from agent output: {_extract_json_error(stripped)}"
+    )
+
+
+def _extract_json_error(text: str) -> str:
     try:
-        return json.loads(stripped)
-    except json.JSONDecodeError:
-        pass
-    start = min((i for i in (stripped.find("{"), stripped.find("[")) if i != -1), default=-1)
-    if start == -1:
-        raise AgentOutputError("no JSON value found in agent output")
-    decoder = json.JSONDecoder()
-    try:
-        value, _ = decoder.raw_decode(stripped[start:])
-        return value
+        json.loads(text)
+        return "unknown error"
     except json.JSONDecodeError as exc:
-        raise AgentOutputError(f"could not parse JSON from agent output: {exc}") from exc
+        return str(exc)
 
 
 def _resolve_skill_paths(

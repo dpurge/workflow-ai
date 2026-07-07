@@ -29,26 +29,187 @@ set — so control flow belongs to the framework, not the model.
 
 ## Backends
 
-Three backends implement the `AgentBackend` protocol:
+Three backends implement the `AgentBackend` protocol. All require `--backend` to be set (no default; set it in the config file to avoid passing it every time).
 
-- **Claude Code** (`--backend claude`, default) — `claude -p` headless; enforces
-  JSON via `--json-schema`.
-- **Pi** (`--backend pi`) — `pi --print --mode json` headless; reconstructs
-  assistant text from Pi's event stream (no native schema, so the engine
-  validates JSON and retries). Redirect to Ollama or OpenRouter via
-  `--api-base-url` and `--api-key`.
-- **Codex** (`--backend codex`) — `codex --quiet --approval-mode full-auto`
-  headless; returns plain text (no native schema, engine extracts/validates JSON
-  and retries). Requires an OpenAI API key — pass via `--api-key` or set
-  `OPENAI_API_KEY` directly. Redirect to OpenRouter or Ollama via
-  `--api-base-url` and `--api-key`. Pass `--model <id>` to override the default
-  (`o4-mini`).
+- **Anthropic SDK** (`--backend anthropic`) — calls the Anthropic API directly
+  via the Python SDK. Install with `pip install "workflow-ai[anthropic]"`. Enforces
+  JSON output via tool-forcing (`emit_result`). Supports a multi-turn agentic tool
+  loop (Read, Write, WebSearch, WebFetch) bounded by `max_turns` (default 10, cap 25).
 
-  **Limitations** (printed as warnings at startup):
-  - `allowed_tools` is ignored — Codex manages tool access via its own sandbox.
-  - `skills` is ignored — Codex has no skill-injection flag.
-  - `mcp_config` is ignored — Codex has no MCP config flag.
-  - `cost_usd` is always `None` — Codex stdout carries no cost information.
+- **OpenAI SDK** (`--backend openai`) — calls the OpenAI API directly via the
+  Python SDK. Install with `pip install "workflow-ai[openai]"`. Enforces JSON output
+  via `response_format` (with automatic fallback to `_extract_json` for models that
+  don't support structured output, such as local Ollama models). Supports the same
+  tool loop as the Anthropic backend. Also supports Azure OpenAI via
+  `--azure-endpoint` and `--api-version`.
+
+  Install both SDK backends at once: `pip install "workflow-ai[sdk]"`
+
+- **GitHub Copilot** (`--backend copilot`) — calls the GitHub Copilot chat
+  completions API directly via `httpx`. Requires a Copilot subscription; authenticate
+  once with `workflow-ai copilot login` (GitHub device flow). Refreshes the session
+  token automatically. Supports the same tool loop as the other backends.
+
+### Backend limitations
+
+- `mcp_config` is ignored — no SDK equivalent (a stderr warning is printed).
+- `cost_usd` is always `None`.
+- `max_turns` defaults to 10 and is hard-capped at 25.
+- WebSearch uses DuckDuckGo HTML scraping (no API key required; best-effort).
+- Anthropic + Azure: use `--api-base-url` pointing to the Azure endpoint and pass
+  the Azure API key via `--api-key`; the Anthropic SDK has no `AzureOpenAI`
+  constructor.
+
+### Backend tools
+
+When `allowed_tools` is set in a workflow node, the SDK backends execute tools
+directly in Python:
+
+| YAML name | What it does |
+|---|---|
+| `Read` | Read a file (up to 1 MB) |
+| `Write` | Write a file within the current working directory (relative paths only) |
+| `WebSearch` | DuckDuckGo search — returns titles, URLs, and snippets |
+| `WebFetch` | HTTP GET a URL and return its text content (up to 500 KB) |
+
+### Script tools (`research/tools/`)
+
+Standalone PEP 723 scripts that workflows can invoke via `uv run --script`. No
+manual installs — `uv` resolves each script's inline dependencies on first run
+and caches them. All scripts emit JSON on stdout and exit 0 on failure (with a
+note on stderr) so callers degrade gracefully.
+
+| Script | Deps | Output shape | Key flags |
+|---|---|---|---|
+| `web-search.py` | stdlib | `[{url, title, snippet}]` | `--limit N` (default 5) |
+| `wikipedia-search.py` | stdlib | `[{title, url, summary, lang}]` | `--limit N`, `--lang LANG` (default `en`) |
+| `arxiv-search.py` | stdlib | `[{id, title, authors, abstract, published, pdf_url}]` | `--limit N`, `--category CAT` (e.g. `cs.LG`) |
+| `rag-index.py` | fastembed, faiss-cpu, pyyaml, numpy | writes `<knowledge-dir>/.index/` | `--knowledge-dir PATH`, `--model NAME` |
+| `rag-query.py` | fastembed, faiss-cpu, numpy | `[{id, file, headers, frontmatter, text, score}]` | `--top-k N`, `--min-score F`, `--tag TAG` |
+
+`rag-index.py` builds a FAISS cosine-similarity index over Markdown files split
+at H2 boundaries. `rag-query.py` queries it — exit code 1 when nothing scores
+above `--min-score`, making it easy to chain a fallback:
+
+```bash
+# build once
+uv run --script src/workflow_ai/research/tools/rag-index.py \
+  --knowledge-dir ~/my-docs
+
+# query — fall back to web search on miss
+uv run --script src/workflow_ai/research/tools/rag-query.py "transformer attention" \
+  || uv run --script src/workflow_ai/research/tools/web-search.py "transformer attention"
+```
+
+Knowledge directory defaults to `$ASSISTANT_KNOWLEDGE_DIR` or
+`~/.assistant/knowledge/`. RAG model defaults to
+`$ASSISTANT_RAG_MODEL` or `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
+
+#### Making tools available to a workflow node
+
+Tools are exposed to a node's model via a **skill file** — a Markdown document
+injected into the system prompt at runtime. The skill describes what tools exist
+and how to call them; the model produces `uv run --script` shell commands that
+the backend (or a `kind: action` node) then executes.
+
+**Step 1 — write a skill file** (e.g. `skills/search-tools.md`):
+
+````markdown
+## Available tools
+
+Run these with `uv run --script <path> <args>`. Each prints JSON to stdout.
+
+### web-search.py
+Search the web via DuckDuckGo. Returns [{url, title, snippet}].
+```
+uv run --script tools/web-search.py "<query>" [--limit N]
+```
+
+### wikipedia-search.py
+Search Wikipedia. Returns [{title, url, summary, lang}].
+```
+uv run --script tools/wikipedia-search.py "<query>" [--limit N] [--lang LANG]
+```
+
+### arxiv-search.py
+Search arXiv papers. Returns [{id, title, authors, abstract, pdf_url}].
+```
+uv run --script tools/arxiv-search.py "<query>" [--limit N] [--category CAT]
+```
+````
+
+**Step 2 — reference the skill in the node** and allow the `Bash` or `Write`
+backend tool so the model can actually run the commands:
+
+```yaml
+nodes:
+  gather:
+    role: Research assistant with access to web, Wikipedia, and arXiv search tools.
+    prompt: "Research this topic: {initial_prompt}"
+    output_kind: text
+    produces: findings
+    skills:
+      - ./skills/search-tools.md
+    allowed_tools: [Bash, Write]
+    next:
+      synthesize: "Synthesize findings."
+```
+
+The `Bash` backend tool lets the model execute arbitrary shell commands (including
+`uv run --script ...`). `Write` lets it persist intermediate results to disk.
+Both are supported by the Anthropic, OpenAI, and Copilot backends.
+
+**Step 3 — for RAG**, run `rag-index.py` once before the workflow, then add
+`rag-query.py` to the skill:
+
+````markdown
+### rag-query.py
+Query the local knowledge base. Returns [{file, headers, text, score}].
+Exit code 1 on miss — chain a fallback if needed.
+```
+uv run --script tools/rag-query.py "<query>" [--top-k N] [--knowledge-dir PATH]
+```
+````
+
+### Corporate authentication
+
+```bash
+# Custom API gateway / proxy
+uv run workflow-ai run research --backend anthropic \
+  --model claude-sonnet-4-6 \
+  --api-base-url https://corp-gateway.example.com \
+  --api-key "$CORP_API_KEY" \
+  --default-header "X-Corp-Auth:Bearer $CORP_TOKEN" \
+  --prompt "Research X"
+
+# Azure OpenAI
+uv run workflow-ai run research --backend openai \
+  --azure-endpoint https://myresource.openai.azure.com \
+  --api-version 2024-10-21 \
+  --model my-deployment-name \
+  --api-key "$AZURE_API_KEY" \
+  --prompt "Research X"
+
+# Local Ollama (OpenAI-compatible /v1 endpoint)
+uv run workflow-ai run research --backend openai \
+  --api-base-url http://localhost:11434/v1 \
+  --api-key ollama \
+  --model gemma4:latest \
+  --prompt "Research X"
+```
+
+Persistent defaults can be set in `~/.config/workflow-ai/config.yaml`:
+
+```yaml
+backend: openai
+model: gemma4:latest
+api_base_url: http://localhost:11434/v1
+api_key: ollama
+default_headers:
+  X-Corp-Auth: "Bearer mytoken"
+azure_endpoint: null
+api_version: null
+```
 
 ### Not supported
 
@@ -61,16 +222,38 @@ Three backends implement the `AgentBackend` protocol:
 ## Install
 
 ```bash
-uv sync
+uv sync                              # core install
+pip install "workflow-ai[anthropic]" # Anthropic backend
+pip install "workflow-ai[openai]"    # OpenAI / Azure backend
+pip install "workflow-ai[sdk]"       # both SDK backends
+
 uv run workflow-ai list          # list built-in workflows
 uv run workflow-ai validate <wf> # DAG-validate without running
 ```
 
+### Development install (command on PATH)
+
+To use `workflow-ai` directly without the `uv run` prefix, and have every code
+edit take effect immediately without reinstalling:
+
+```bash
+uv tool install --editable .
+```
+
+This registers `workflow-ai` as a global uv tool backed by an editable install of
+the current checkout. Edits to source files are reflected instantly. To include
+optional SDK extras:
+
+```bash
+uv tool install --editable ".[sdk]"
+```
+
+To uninstall: `uv tool uninstall workflow-ai`
+
 ## Docker / CI
 
-The `Dockerfile` builds a self-contained image with `claude`, `pi`, `codex`, and
-`workflow-ai` pre-installed. Pass everything through environment variables; mount
-`/runs` to retrieve results.
+The `Dockerfile` builds a self-contained image with `workflow-ai` pre-installed.
+Pass everything through environment variables; mount `/runs` to retrieve results.
 
 ```bash
 docker build -t workflow-ai .
@@ -89,7 +272,7 @@ docker run --rm \
 |----------|----------|-------------|
 | `WORKFLOW` | **yes** | Workflow name (`research`, `phraseforge`, …) |
 | `WORKFLOW_PROMPT` | no | Initial prompt passed to the start node |
-| `WORKFLOW_BACKEND` | no | Backend: `claude` (default) \| `pi` \| `codex` |
+| `WORKFLOW_BACKEND` | **yes** | Backend: `anthropic` \| `openai` \| `copilot` |
 | `WORKFLOW_MODEL` | no | Model id (e.g. `claude-sonnet-4-6`, `gemma3:9b`) |
 | `WORKFLOW_API_BASE_URL` | no | API base URL — redirect to Ollama, OpenRouter, etc. |
 | `WORKFLOW_API_KEY` | no | API key for the target endpoint |
@@ -98,8 +281,8 @@ docker run --rm \
 | `WORKFLOW_LEVEL` | phraseforge | CEFR level a1..c2 (`--level`) |
 | `WORKFLOW_TRANSLATION_LANG` | phraseforge | Gloss language (`--translation-lang`) |
 | `WORKFLOW_CWD` | phraseforge | Base dir for lesson output (`--cwd`) |
-| `ANTHROPIC_API_KEY` | claude | Claude API key (not needed when using Ollama) |
-| `OPENAI_API_KEY` | codex | OpenAI API key (not needed when using Ollama) |
+| `ANTHROPIC_API_KEY` | anthropic | API key for Anthropic backend (not needed with Ollama/proxy) |
+| `OPENAI_API_KEY` | openai | API key for OpenAI backend (not needed with Ollama/proxy) |
 | `SSH_PRIVATE_KEY` | ssh | PEM private key for GitHub SSH auth |
 | `SSH_KNOWN_HOSTS` | ssh | Known-hosts content; omit to auto-scan `github.com` |
 
@@ -108,33 +291,17 @@ stdout so CI logs capture the full run.
 
 ### Local Ollama
 
-Works with any backend. Pass the Ollama base URL and `ollama` as the key
-(Ollama accepts any non-empty string as the API key).
-
-**Claude + Ollama** (Ollama exposes an Anthropic-compatible API):
+Use `--backend openai` (Ollama exposes an OpenAI-compatible `/v1` API). Pass `ollama`
+as the API key (Ollama accepts any non-empty string).
 
 ```bash
 docker run --rm \
   -e WORKFLOW=research \
   -e WORKFLOW_PROMPT="Research lunar habitats" \
-  -e WORKFLOW_BACKEND=claude \
-  -e WORKFLOW_API_BASE_URL=http://host.docker.internal:11434 \
-  -e WORKFLOW_API_KEY=ollama \
-  -e WORKFLOW_MODEL=gemma3:9b \
-  -v "$(pwd)/runs:/runs" \
-  workflow-ai
-```
-
-**Pi + Ollama** (Ollama exposes an OpenAI-compatible `/v1` API):
-
-```bash
-docker run --rm \
-  -e WORKFLOW=phraseforge \
-  -e WORKFLOW_BACKEND=pi \
+  -e WORKFLOW_BACKEND=openai \
   -e WORKFLOW_API_BASE_URL=http://host.docker.internal:11434/v1 \
   -e WORKFLOW_API_KEY=ollama \
-  -e WORKFLOW_MODEL=gemma3:9b \
-  -e WORKFLOW_SOURCE="https://de.wikipedia.org/wiki/Kaffee" \
+  -e WORKFLOW_MODEL=gemma4:latest \
   -v "$(pwd)/runs:/runs" \
   workflow-ai
 ```
@@ -145,7 +312,7 @@ docker run --rm \
 docker run --rm \
   -e WORKFLOW=research \
   -e WORKFLOW_PROMPT="Research X" \
-  -e WORKFLOW_BACKEND=claude \
+  -e WORKFLOW_BACKEND=openai \
   -e WORKFLOW_API_BASE_URL=https://openrouter.ai/api/v1 \
   -e WORKFLOW_API_KEY="${OPENROUTER_API_KEY}" \
   -e WORKFLOW_MODEL=anthropic/claude-sonnet-4-6 \
@@ -176,10 +343,10 @@ one context file per terminal branch.
 
 ### `research` — fan-out web/file research → summary
 
-Uses the **Claude Code** backend (default). Requires the `claude` CLI on PATH.
-
 ```bash
 uv run workflow-ai run research \
+  --backend anthropic \
+  --model claude-sonnet-4-6 \
   --prompt "Research the tradeoffs of X" \
   --out runs/research
 ```
@@ -189,36 +356,21 @@ synthesizes a summary.
 
 ### `phraseforge` — web page → language-lesson MDX
 
-Mirrors Pi's `phraseforge-mdx` workflow. Writes the lesson to
-`docs/<lang>/<level>/<YYYY-MM-DD>-<seq>.mdx` under `--cwd`. Requires the `pi` CLI,
-`uv`, and Pi's `mdx-export.py` (reused as the renderer + validation gate).
-
-**Use Pi's configured default model** (whatever `~/.pi/agent/settings.json` points
-to — e.g. github-copilot):
+Writes the lesson to `docs/<lang>/<level>/<YYYY-MM-DD>-<seq>.mdx` under `--cwd`.
 
 ```bash
-uv run workflow-ai run phraseforge --backend pi \
+uv run workflow-ai run phraseforge --backend openai \
+  --model gpt-5.4 \
   --source https://de.wikipedia.org/wiki/Kaffee \
   --level a2 \
   --out runs/phraseforge
 ```
 
-**Pin a local Ollama model** (Pi backend — Ollama exposes an OpenAI-compatible `/v1` API):
+**Local Ollama** (OpenAI-compatible `/v1` API):
 
 ```bash
-uv run workflow-ai run phraseforge --backend pi \
+uv run workflow-ai run phraseforge --backend openai \
   --api-base-url http://localhost:11434/v1 \
-  --api-key ollama \
-  --model gemma4:e4b \
-  --source https://de.wikipedia.org/wiki/Kaffee \
-  --level a2
-```
-
-**Claude + Ollama** (Ollama exposes an Anthropic-compatible API):
-
-```bash
-uv run workflow-ai run phraseforge \
-  --api-base-url http://localhost:11434 \
   --api-key ollama \
   --model gemma4:e4b \
   --source https://de.wikipedia.org/wiki/Kaffee \
@@ -236,7 +388,7 @@ fields are optional; a missing file is silently ignored. CLI flags always take
 precedence over config values.
 
 ```yaml
-backend: claude          # claude | pi | codex
+backend: anthropic       # anthropic | openai | copilot
 model: null              # default model id
 api_base_url: null       # API base URL (e.g. http://localhost:11434 for Ollama)
 api_key: null            # API key for the target endpoint
@@ -255,10 +407,13 @@ phraseforge:
 
 | Option | Meaning |
 |--------|---------|
-| `--backend claude\|pi\|codex` | agent backend (default `claude`) |
-| `--api-base-url URL` | redirect to Ollama, OpenRouter, etc. (e.g. `http://localhost:11434`) |
+| `--backend anthropic\|openai\|copilot` | agent backend (required; or set in config file) |
+| `--api-base-url URL` | redirect to Ollama, OpenRouter, etc. (e.g. `http://localhost:11434/v1`) |
 | `--api-key KEY` | API key for the target endpoint; use `ollama` for local Ollama |
 | `--model ID` | model id to pass to the backend (omit to use the backend's default) |
+| `--default-header KEY:VALUE` | extra HTTP header (repeatable); e.g. `--default-header Authorization:Bearer tok` |
+| `--azure-endpoint URL` | Azure OpenAI resource endpoint (activates `AzureOpenAI` constructor) |
+| `--api-version VER` | Azure OpenAI API version (e.g. `2024-10-21`) |
 | `--retries N` | override per-node retry count (default 3) |
 | `--out DIR` | results directory |
 | `--verbose` / `-v` | print node events and context snapshots to stdout as the run progresses |
@@ -274,18 +429,19 @@ phraseforge:
 | `src/workflow_ai/engine.py` | worklist executor (action/model, json/text, router, fan-out, retry) |
 | `src/workflow_ai/cli.py` | Typer CLI |
 | `src/workflow_ai/config.py` | config file loader (`~/.config/workflow-ai/config.yaml`) |
-| `src/workflow_ai/backends/claude.py` | headless `claude -p` adapter |
-| `src/workflow_ai/backends/pi.py` | headless `pi --mode json` adapter |
-| `src/workflow_ai/backends/codex.py` | headless `codex --quiet` adapter |
+| `src/workflow_ai/backends/anthropic_sdk.py` | Anthropic SDK backend |
+| `src/workflow_ai/backends/openai_sdk.py` | OpenAI / Azure SDK backend |
+| `src/workflow_ai/backends/copilot.py` | GitHub Copilot backend (httpx) |
 | `src/workflow_ai/research/workflow.yaml` | research workflow graph |
 | `src/workflow_ai/research/schemas.py` | research output schemas |
 | `src/workflow_ai/research/definitions.py` | research verifiers + updaters |
 | `src/workflow_ai/research/skills/` | skill files injected into research nodes |
+| `src/workflow_ai/research/tools/` | PEP 723 scripts: web-search, wikipedia-search, arxiv-search, rag-index, rag-query |
 | `src/workflow_ai/phraseforge/workflow.yaml` | phraseforge workflow graph |
 | `src/workflow_ai/phraseforge/schemas.py` | phraseforge output schemas |
 | `src/workflow_ai/phraseforge/definitions.py` | phraseforge actions / router / verifiers |
 | `src/workflow_ai/phraseforge/skills/` | skill files injected into phraseforge nodes |
-| `Dockerfile` | self-contained image with all three backends + workflow-ai |
+| `Dockerfile` | self-contained image with workflow-ai |
 | `entrypoint.sh` | Docker entrypoint: SSH setup, env-var → CLI arg mapping |
 
 ## Test
@@ -300,8 +456,8 @@ needed.
 ## Adding a backend
 
 Implement the `AgentBackend` protocol (`backends/base.py`) — a single
-`run(invocation) -> AgentResult`. See `backends/claude.py`, `backends/pi.py`,
-and `backends/codex.py` for reference implementations.
+`run(invocation) -> AgentResult`. See `backends/anthropic_sdk.py` or
+`backends/copilot.py` for reference implementations.
 
 ---
 
