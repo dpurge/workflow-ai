@@ -6,7 +6,9 @@ from pathlib import Path
 
 import typer
 
-from . import phraseforge  # noqa: F401  (registers phraseforge schemas/actions/routers/verifiers)
+import datetime
+
+from . import ebook  # noqa: F401  (registers ebook schemas/actions/routers/verifiers)
 from . import research  # noqa: F401  (registers research schemas/verifiers/updaters)
 from .backends.anthropic_sdk import AnthropicBackend
 from .backends.copilot import CopilotBackend
@@ -107,10 +109,20 @@ def run(
     api_base_url: str = typer.Option(None, "--api-base-url", help="API base URL (e.g. http://localhost:11434 for Ollama, https://openrouter.ai/api/v1)"),
     api_key: str = typer.Option(None, "--api-key", help="API key for the target endpoint"),
     model: str = typer.Option(None, "--model", help="Model id (e.g. gemma2:9b)"),
-    source: str = typer.Option(None, "--source", help="phraseforge: source URL or file path"),
-    level: str = typer.Option(None, "--level", help="phraseforge: CEFR level a1..c2"),
-    translation_lang: str = typer.Option(None, "--translation-lang", help="phraseforge: gloss language"),
-    cwd: str = typer.Option(None, "--cwd", help="phraseforge: base dir for docs/<lang>/<level>/"),
+    source: str = typer.Option(None, "--source", help="ebook: lesson source URL or file path (kind: language)"),
+    level: str = typer.Option(None, "--level", help="ebook: CEFR level a1..c2"),
+    translation_lang: str = typer.Option(None, "--translation-lang", help="ebook: reader's translation language (default from ebook.yml, else pol)"),
+    cwd: str = typer.Option(None, "--cwd", help="ebook: dir to search for the nearest ebook.yml when --ebook-yml is omitted"),
+    ebook_yml: str = typer.Option(None, "--ebook-yml", help="ebook: path to the project's ebook.yml"),
+    kind: str = typer.Option(None, "--kind", help="ebook: 'generic' or 'lang' (REQUIRED for ebook)"),
+    lang: str = typer.Option(None, "--lang", help="ebook (kind=lang): learning-target language, ISO 639-3 (REQUIRED for kind=lang)"),
+    script: str = typer.Option(None, "--script", help="ebook (kind=lang): learning-target script, ISO 15924 (REQUIRED for kind=lang)"),
+    chapter: str = typer.Option(None, "--chapter", help="ebook: target chapter path relative to the project (default: next NN.md)"),
+    wire: bool = typer.Option(True, "--wire/--no-wire", help="ebook: wire the new chapter into ebook.yml `text` (default: on)"),
+    form: str = typer.Option("text", "--form", help="ebook (kind=lang, compose path): 'text' or 'dialog' (default: text)"),
+    searches: int = typer.Option(24, "--searches", help="ebook (kind=lang, compose path): web searches for evidence (clamped 20-30)"),
+    grounding: bool = typer.Option(True, "--grounding/--no-grounding", help="ebook (kind=lang, compose path): require composed text to reuse the gathered evidence (default: on); use --no-grounding for creative/invented prompts"),
+    depth: str = typer.Option(None, "--depth", help="research: report depth quick|background|deep (default: model-chosen)"),
     default_header: list[str] = typer.Option(
         None, "--default-header",
         help="HTTP header in KEY:VALUE format (repeatable). E.g. --default-header Authorization:Bearer token",
@@ -161,9 +173,13 @@ def run(
     out = out or cfg.out or "runs/latest"
     verbose = verbose or (cfg.verbose or False)
     log_file = log_file or cfg.log_file
-    translation_lang = translation_lang or cfg.phraseforge.translation_lang
-    cwd = cwd or cfg.phraseforge.cwd
-    level = level or cfg.phraseforge.level
+    translation_lang = translation_lang or cfg.ebook.translation_lang
+    cwd = cwd or cfg.ebook.cwd
+    level = level or cfg.ebook.level
+    ebook_yml = ebook_yml or cfg.ebook.ebook_yml
+    kind = kind or cfg.ebook.kind
+    lang = lang or cfg.ebook.lang
+    script = script or cfg.ebook.script
 
     try:
         graph = WorkflowGraph.from_yaml(_resolve(workflow))
@@ -171,16 +187,52 @@ def run(
         typer.secho(f"INVALID workflow: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(1)
 
+    # --kind is required for ebook and must be one of generic|lang; kind=lang
+    # additionally requires the learning target --lang/--script.
+    if graph.name == "ebook":
+        kind = (kind or "").lower()
+        if kind not in ("generic", "lang"):
+            raise typer.BadParameter(
+                "ebook requires --kind 'generic' or 'lang'", param_hint="--kind"
+            )
+        if kind == "lang" and not (lang and script):
+            raise typer.BadParameter(
+                "--kind lang requires the learning target --lang <iso639-3> and "
+                "--script <iso15924>",
+                param_hint="--lang/--script",
+            )
+
     initial_data: dict = {}
+    # ebook inputs
     if source:
-        kind = "url" if source.startswith(("http://", "https://")) else "file"
-        initial_data["source_ref"] = {"kind": kind, "value": source}
+        source_kind = "url" if source.startswith(("http://", "https://")) else "file"
+        initial_data["source_ref"] = {"kind": source_kind, "value": source}
     if level:
         initial_data["level"] = level.lower()
     if translation_lang:
         initial_data["translation_lang"] = translation_lang
     if cwd:
         initial_data["cwd"] = cwd
+    if ebook_yml:
+        initial_data["ebook_yml"] = ebook_yml
+    if kind:
+        initial_data["kind"] = kind.lower()
+    if lang:
+        initial_data["language"] = lang.lower()
+    if script:
+        initial_data["script"] = script.lower()
+    if chapter:
+        initial_data["chapter"] = chapter
+    if graph.name == "ebook":
+        initial_data["wire"] = wire
+        initial_data["form"] = (form or "text").lower()
+        initial_data["max_searches"] = max(20, min(30, searches))
+        initial_data["grounding"] = grounding
+    # research inputs
+    if depth:
+        initial_data["depth"] = depth.lower()
+    initial_data["as_of"] = datetime.date.today().isoformat()
+    initial_data["report_dir"] = out
 
     engine = Engine(_make_backend(backend, api_base_url, api_key, model, parsed_headers, azure_endpoint, api_version, copilot_config=copilot_config))
 

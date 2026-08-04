@@ -19,12 +19,16 @@ from pydantic import BaseModel, ConfigDict
 DEFAULT_PATH = Path.home() / ".config" / "workflow-ai" / "config.yaml"
 
 
-class PhraseforgeConfig(BaseModel):
+class EbookConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     level: str | None = None
     translation_lang: str | None = None
     cwd: str | None = None
+    ebook_yml: str | None = None
+    kind: str | None = None
+    lang: str | None = None
+    script: str | None = None
 
 
 class Config(BaseModel):
@@ -42,7 +46,7 @@ class Config(BaseModel):
     api_version: str | None = None
     azure_endpoint: str | None = None
     copilot_config: str | None = None
-    phraseforge: PhraseforgeConfig = PhraseforgeConfig()
+    ebook: EbookConfig = EbookConfig()
 
 
 def load_config(path: Path | None = None) -> Config:

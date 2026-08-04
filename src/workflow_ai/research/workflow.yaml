@@ -1,72 +1,65 @@
 name: research
 start: classify
 
+# Research a topic into a sourced, standard-shape Markdown report.
+# The model reasons (classify, synthesize); actions do IO. Evidence gathering is
+# deterministic and local-first: the RAG knowledge base takes precedence, and
+# only on an empty result does it fall through to Wikipedia → arXiv → web.
+
 nodes:
   classify:
     role: >
       You are a research triage analyst. Given the initial request, define the
-      precise research topic and decide which information-gathering branches are
-      worth running.
+      precise research topic and choose a depth tier: quick (~500-1000 words,
+      the default), background (~1500-3000), or deep (3000+). Return JSON only.
     prompt: "Initial research request:\n{initial_prompt}"
     schema: classify_out
     verifier: topic_present
     updater: store_topic
-    fan_out: true
-    allowed_tools: ["WebSearch"]
     next:
-      search_web: "Gather facts from the public web via search."
-      read_files: "Gather facts from local project files."
+      gather: "Gather evidence: local knowledge base first, then the web."
 
-  search_web:
-    role: >
-      You are a web researcher. Use web search to collect discrete, sourced
-      findings on the topic. Do not speculate.
-    prompt: "Research topic:\n{data}"
+  gather:
+    kind: action
+    action: gather_evidence
     schema: gather_out
     verifier: nonempty_findings
     updater: append_findings
-    allowed_tools: ["WebSearch"]
-    skills:
-      - ./skills/web-researcher.md
-    next:
-      synthesize: "Hand collected findings to synthesis."
-
-  read_files:
-    role: >
-      You are a codebase researcher. Read relevant local files to collect
-      discrete, sourced findings on the topic.
-    prompt: "Research topic:\n{data}"
-    schema: gather_out
-    verifier: nonempty_findings
-    updater: append_findings
-    allowed_tools: ["Read", "Grep", "Glob"]
+    retries: 1
     next:
       synthesize: "Hand collected findings to synthesis."
 
   synthesize:
     role: >
-      You are a synthesis analyst. Combine the accumulated findings into a
-      concise, honest summary and rate your confidence.
-    prompt: "Findings so far:\n{data}"
+      You are a synthesis analyst. Combine the findings into a standard-format
+      report: a title, a ~60-100 word summary, H2 body sections (one per
+      sub-topic), and open questions. Every claim in the body carries an inline
+      [key] citation whose key matches a finding. Do not introduce claims the
+      findings do not support. Rate confidence High/Medium/Low. Return JSON only.
+    prompt: >
+      Research topic: {topic}
+
+      Depth: {depth}
+
+
+      Findings (each carries a citation `key` — cite them inline as [key]):
+
+      {data}
     schema: synthesize_out
-    updater: store_summary
+    updater: store_report
+    reads: [topic, depth, findings]
     skills:
       - ./skills/synthesis.md
     next:
       report: "Write the final report."
 
   report:
-    role: >
-      You are a technical writer. Write the final research report as a Markdown
-      file with a .md extension and return its path.
-    prompt: "Summary to write up:\n{data}\n\nWrite the report as Markdown to a file whose name ends with .md"
+    kind: action
+    action: write_report
     schema: report_out
     verifier: markdown_path
-    allowed_tools: ["Write"]
     next:
       done: "Finish the workflow."
 
   done:
-    role: "Terminal."
-    schema: report_out
     terminal: true

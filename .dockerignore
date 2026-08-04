@@ -1,0 +1,16 @@
+# Keep the build context small. NB: do NOT exclude src/**/*.md — the bundled
+# ebook language skills live there and must be copied into the image.
+.git/
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+runs/
+docs/
+agents/
+plans/
+tests/
+.claude/
+lunar_habitats_report.md
+Dockerfile
+.dockerignore

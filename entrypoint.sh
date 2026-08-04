@@ -37,11 +37,21 @@ set -- "${WORKFLOW}"
 [ -n "${WORKFLOW_API_KEY:-}"          ] && set -- "$@" --api-key          "${WORKFLOW_API_KEY}"
 [ -n "${WORKFLOW_OUT:-}"              ] && set -- "$@" --out              "${WORKFLOW_OUT}"
 
-# phraseforge-specific parameters
+# ebook-specific parameters
 [ -n "${WORKFLOW_SOURCE:-}"           ] && set -- "$@" --source           "${WORKFLOW_SOURCE}"
 [ -n "${WORKFLOW_LEVEL:-}"            ] && set -- "$@" --level            "${WORKFLOW_LEVEL}"
 [ -n "${WORKFLOW_TRANSLATION_LANG:-}" ] && set -- "$@" --translation-lang "${WORKFLOW_TRANSLATION_LANG}"
 [ -n "${WORKFLOW_CWD:-}"              ] && set -- "$@" --cwd              "${WORKFLOW_CWD}"
+[ -n "${WORKFLOW_EBOOK_YML:-}"        ] && set -- "$@" --ebook-yml        "${WORKFLOW_EBOOK_YML}"
+[ -n "${WORKFLOW_KIND:-}"             ] && set -- "$@" --kind             "${WORKFLOW_KIND}"
+[ -n "${WORKFLOW_LANG:-}"             ] && set -- "$@" --lang             "${WORKFLOW_LANG}"
+[ -n "${WORKFLOW_SCRIPT:-}"           ] && set -- "$@" --script           "${WORKFLOW_SCRIPT}"
+[ -n "${WORKFLOW_CHAPTER:-}"          ] && set -- "$@" --chapter          "${WORKFLOW_CHAPTER}"
+[ -n "${WORKFLOW_FORM:-}"             ] && set -- "$@" --form             "${WORKFLOW_FORM}"
+[ -n "${WORKFLOW_SEARCHES:-}"         ] && set -- "$@" --searches          "${WORKFLOW_SEARCHES}"
+
+# research-specific parameters
+[ -n "${WORKFLOW_DEPTH:-}"            ] && set -- "$@" --depth            "${WORKFLOW_DEPTH}"
 
 # Verbose is always on: CI consumers read structured progress from stdout.
 set -- "$@" --verbose

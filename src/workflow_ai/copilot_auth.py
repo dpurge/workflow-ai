@@ -1,6 +1,6 @@
 """GitHub Copilot auth helpers: config read/write, device-flow login, status.
 
-This module is Pi-independent. It manages workflow-ai's own credential file at
+It manages workflow-ai's own credential file at
 ~/.config/workflow-ai/copilot.json.
 
 Security rules:

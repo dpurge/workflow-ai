@@ -250,10 +250,142 @@ uv tool install --editable ".[sdk]"
 
 To uninstall: `uv tool uninstall workflow-ai`
 
+## Usage — common cases
+
+A copy-paste cookbook. Commands use `uv run workflow-ai` (from a clone); with the
+tool installed, drop `uv run`. Every run writes `result.json` + per-branch context
+to `--out` (default `runs/latest`).
+
+### Set your backend + model once (recommended)
+
+Put defaults in `~/.config/workflow-ai/config.yaml` so you don't repeat
+`--backend`/`--model` on every command:
+
+```yaml
+backend: copilot            # anthropic | openai | copilot
+model: claude-sonnet-4.6    # a model your backend exposes
+```
+
+Then the examples below just work. Any flag still overrides the config per-run.
+(See [Backends](#backends) to pick a backend, and [OpenRouter](#openrouter) /
+[Local Ollama](#local-ollama) below for those.)
+
+### `research` — topic → sourced Markdown report
+
+```bash
+# Quick report (RAG-first, then Wikipedia → arXiv → web), written to <out>/report.md
+uv run workflow-ai run research --prompt "Trade-offs of columnar vs row storage" \
+  --out runs/research
+
+# Control the depth: quick (default) | background | deep
+uv run workflow-ai run research --prompt "History of the CAP theorem" --depth deep
+```
+
+### `ebook` — language lessons (`--kind lang`)
+
+`--kind lang` **requires** the learning target `--lang <iso639-3> --script <iso15924>`.
+The book's own `ebook.yml` `language`/`script` are the reader/translation side.
+
+```bash
+# 1) Lesson FROM a source (URL or local file) — learn from that exact text:
+uv run workflow-ai run ebook --kind lang --lang deu --script latn \
+  --ebook-yml .../lang-notes/deu/ebook.yml \
+  --source https://de.wikipedia.org/wiki/Kaffee --level a2
+
+uv run workflow-ai run ebook --kind lang --lang deu --script latn \
+  --ebook-yml .../deu/ebook.yml --source ./article.txt --level b1
+
+# 2) Lesson COMPOSED from a topic (no --source) — evidence-grounded from ~24
+#    target-language web searches (≥5 s apart, so ~2–3 min):
+uv run workflow-ai run ebook --kind lang --lang ron --script latn \
+  --ebook-yml .../ron/ebook.yml --level a1 \
+  --prompt "A text about yourself: name, age, where you're from, job, interests"
+
+# 3) Compose a DIALOG instead of prose (--form dialog):
+uv run workflow-ai run ebook --kind lang --lang ron --script latn --form dialog \
+  --ebook-yml .../ron/ebook.yml --level a1 --chapter a1/003.md \
+  --prompt "A dialog: shopping for groceries — grocery items and payment"
+
+# 4) CREATIVE / invented prompt — skip the evidence-grounding gate with --no-grounding:
+uv run workflow-ai run ebook --kind lang --lang ron --script latn --form dialog --no-grounding \
+  --ebook-yml .../ron/ebook.yml --level a1 --chapter a1/004.md \
+  --prompt "Two children counting toys and animals; use numbers 0–12 naturally"
+
+# 5) Preview a chapter WITHOUT editing ebook.yml (--no-wire), pick the file, tune searches:
+uv run workflow-ai run ebook --kind lang --lang spa --script latn --no-wire \
+  --ebook-yml .../spa/ebook.yml --source article.txt --chapter b1/07.md
+
+uv run workflow-ai run ebook --kind lang --lang ron --script latn \
+  --ebook-yml .../ron/ebook.yml --level a2 --searches 30 \
+  --translation-lang eng --prompt "Ordering food at a restaurant"
+```
+
+Flags: `--chapter <rel-path>` (else the next numbered file), `--translation-lang`
+(else the book's `ebook.yml` language, else `pol`), `--form text|dialog`,
+`--searches N` (20–30), `--grounding/--no-grounding`, `--wire/--no-wire`.
+
+### `ebook` — generic prose chapter (`--kind generic`)
+
+No `--lang`/`--script`; the chapter is written in the book's own language.
+
+```bash
+uv run workflow-ai run ebook --kind generic \
+  --ebook-yml .../book/ebook.yml --chapter 05.md \
+  --prompt "The history of movable type"
+```
+
+### After a run: build the outputs
+
+```bash
+ebook-cli build -p ebook.yml -f mdx           # fast parse check
+ebook-cli build -p ebook.yml -f epub,pdf,mdx  # EPUB + A5 PDF + Docusaurus MDX
+```
+
+### Choosing a backend per run
+
+```bash
+# Copilot with a specific model this run (overrides config):
+uv run workflow-ai run research --prompt "..." --backend copilot --model gpt-5.4
+
+# OpenRouter (OpenAI-compatible): base URL + key + provider/model id:
+uv run workflow-ai run research --prompt "..." \
+  --backend openai --api-base-url https://openrouter.ai/api/v1 \
+  --api-key "$OPENROUTER_API_KEY" --model anthropic/claude-sonnet-4-6
+
+# Local Ollama (OpenAI-compatible /v1):
+uv run workflow-ai run research --prompt "..." \
+  --backend openai --api-base-url http://localhost:11434/v1 --api-key ollama --model gemma3:9b
+
+# Anthropic direct:
+uv run workflow-ai run research --prompt "..." \
+  --backend anthropic --api-key "$ANTHROPIC_API_KEY" --model claude-sonnet-4-6
+
+# Azure OpenAI:
+uv run workflow-ai run research --prompt "..." \
+  --backend openai --azure-endpoint https://my.openai.azure.com \
+  --api-version 2024-10-21 --api-key "$AZURE_OPENAI_API_KEY" --model my-deployment
+```
+
+### Copilot auth, listing, validating
+
+```bash
+workflow-ai copilot login      # one-time GitHub device-flow auth for --backend copilot
+workflow-ai copilot status     # show credential status
+workflow-ai list               # list built-in workflows (ebook, research)
+workflow-ai validate ebook     # DAG-validate a workflow without running it
+uv run workflow-ai run ebook ... --verbose   # print per-node progress + context
+```
+
+For containerized runs, see [Docker / CI](#docker--ci) below.
+
 ## Docker / CI
 
-The `Dockerfile` builds a self-contained image with `workflow-ai` pre-installed.
-Pass everything through environment variables; mount `/runs` to retrieve results.
+The `Dockerfile` builds a small self-contained image on a **Python + uv** base
+(`ghcr.io/astral-sh/uv:python3.12-bookworm-slim` — no Node; the backends are
+pure-Python SDKs) with `workflow-ai` and all 42 bundled language skills
+pre-installed. Pass everything through environment variables; mount `/runs` to
+retrieve results. Merges to `main` publish an image to GHCR (see
+[Releases](#releases)); or build locally:
 
 ```bash
 docker build -t workflow-ai .
@@ -270,17 +402,26 @@ docker run --rm \
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `WORKFLOW` | **yes** | Workflow name (`research`, `phraseforge`, …) |
+| `WORKFLOW` | **yes** | Workflow name (`research`, `ebook`, …) |
 | `WORKFLOW_PROMPT` | no | Initial prompt passed to the start node |
 | `WORKFLOW_BACKEND` | **yes** | Backend: `anthropic` \| `openai` \| `copilot` |
 | `WORKFLOW_MODEL` | no | Model id (e.g. `claude-sonnet-4-6`, `gemma3:9b`) |
 | `WORKFLOW_API_BASE_URL` | no | API base URL — redirect to Ollama, OpenRouter, etc. |
 | `WORKFLOW_API_KEY` | no | API key for the target endpoint |
 | `WORKFLOW_OUT` | no | Output directory inside the container (default `/runs`) |
-| `WORKFLOW_SOURCE` | phraseforge | Source URL or file path (`--source`) |
-| `WORKFLOW_LEVEL` | phraseforge | CEFR level a1..c2 (`--level`) |
-| `WORKFLOW_TRANSLATION_LANG` | phraseforge | Gloss language (`--translation-lang`) |
-| `WORKFLOW_CWD` | phraseforge | Base dir for lesson output (`--cwd`) |
+| `WORKFLOW_EBOOK_YML` | ebook | Path to the project's `ebook.yml` (`--ebook-yml`) |
+| `WORKFLOW_KIND` | ebook | `generic` \| `lang` (`--kind`, required) |
+| `WORKFLOW_LANG` | ebook | learning-target ISO 639-3 (`--lang`, required for kind=lang) |
+| `WORKFLOW_SCRIPT` | ebook | learning-target ISO 15924 (`--script`, required for kind=lang) |
+| `WORKFLOW_FORM` | ebook | `text` \| `dialog` for the compose path (`--form`) |
+| `WORKFLOW_SEARCHES` | ebook | web-search budget for the compose path (`--searches`) |
+| `WORKFLOW_SOURCE` | ebook | Lesson source URL or file path (`--source`) |
+| `WORKFLOW_LEVEL` | ebook | CEFR level a1..c2 (`--level`) |
+| `WORKFLOW_TRANSLATION_LANG` | ebook | Reader's translation language (`--translation-lang`) |
+| `WORKFLOW_CHAPTER` | ebook | Target chapter path in the project (`--chapter`) |
+| `WORKFLOW_CWD` | ebook | Dir to search for the nearest `ebook.yml` (`--cwd`) |
+| `WORKFLOW_DEPTH` | research | Report depth `quick`\|`background`\|`deep` (`--depth`) |
+| `EBOOK_LANG_SKILLS_DIR` | ebook | *Optional* override for the `@lang` skills dir (all 42 are bundled by default) |
 | `ANTHROPIC_API_KEY` | anthropic | API key for Anthropic backend (not needed with Ollama/proxy) |
 | `OPENAI_API_KEY` | openai | API key for OpenAI backend (not needed with Ollama/proxy) |
 | `SSH_PRIVATE_KEY` | ssh | PEM private key for GitHub SSH auth |
@@ -307,6 +448,37 @@ docker run --rm \
 ```
 
 ### OpenRouter
+
+OpenRouter is OpenAI-compatible, so use `--backend openai` pointed at
+`https://openrouter.ai/api/v1`, your OpenRouter key, and a `provider/model`
+id (e.g. `anthropic/claude-sonnet-4-6`, `google/gemini-2.5-pro`,
+`meta-llama/llama-3.3-70b-instruct`). There are three ways to configure it:
+
+**1. CLI flags** (per run):
+
+```bash
+uv run workflow-ai run ebook --kind lang --lang deu --script latn \
+  --backend openai \
+  --api-base-url https://openrouter.ai/api/v1 \
+  --api-key "$OPENROUTER_API_KEY" \
+  --model anthropic/claude-sonnet-4-6 \
+  --ebook-yml .../deu/ebook.yml --prompt "Ordering coffee" --level a2
+```
+
+**2. Home config** — set persistent defaults in `~/.config/workflow-ai/config.yaml`
+(then just `uv run workflow-ai run research --prompt "…"`):
+
+```yaml
+backend: openai
+api_base_url: https://openrouter.ai/api/v1
+api_key: sk-or-v1-...            # your OpenRouter key
+model: anthropic/claude-sonnet-4-6
+```
+
+> Tip: keep the key out of the file with `api_key: null` and pass
+> `--api-key "$OPENROUTER_API_KEY"` (or set it in the config only on a trusted machine).
+
+**3. Docker env vars**:
 
 ```bash
 docker run --rm \
@@ -336,50 +508,128 @@ The entrypoint writes the key to `~/.ssh/id_rsa` (mode 600) and pre-trusts
 `github.com` in `known_hosts` so workflows can clone and push without
 interactive prompts.
 
+## Releases
+
+`.github/workflows/release.yml` builds and publishes the Docker image on every
+merge to `main` (and on manual `workflow_dispatch`). It first runs the full test
+suite (`uv run pytest`); only if that passes does it compute a **CalVer** version
+`v<year>.<month>.<micro>` (the micro auto-increments within the month), push a
+matching git tag, and build + push the image to **GHCR**:
+
+```
+ghcr.io/<owner>/workflow-ai:<version>
+ghcr.io/<owner>/workflow-ai:latest
+```
+
+Pull and run the published image instead of building locally:
+
+```bash
+docker run --rm -e WORKFLOW=research -e WORKFLOW_PROMPT="…" \
+  -e WORKFLOW_BACKEND=openai \
+  -e WORKFLOW_API_BASE_URL=https://openrouter.ai/api/v1 \
+  -e WORKFLOW_API_KEY="$OPENROUTER_API_KEY" \
+  -e WORKFLOW_MODEL=anthropic/claude-sonnet-4-6 \
+  -v "$(pwd)/runs:/runs" \
+  ghcr.io/<owner>/workflow-ai:latest
+```
+
 ## Running each workflow
 
 Results are always written to `--out` (default `runs/latest`): `result.json` plus
 one context file per terminal branch.
 
-### `research` — fan-out web/file research → summary
+### `research` — topic → sourced Markdown report
 
 ```bash
 uv run workflow-ai run research \
-  --backend anthropic \
-  --model claude-sonnet-4-6 \
+  --backend copilot \
+  --model gpt-5.4 \
   --prompt "Research the tradeoffs of X" \
+  --depth quick \
   --out runs/research
 ```
 
-The start node classifies the topic and fans out to web + file gathering, then
-synthesizes a summary.
+Pipeline: **classify** the topic and pick a depth tier → **gather** evidence
+*deterministically* (the local RAG knowledge base first; only on an empty result
+does it fall through to Wikipedia → arXiv → web) → **synthesize** a standard-shape
+report → **write** it. The report (`<out>/report.md`) has a title, a ~60–100 word
+summary, H2 body sections with inline `[key]` citations, open questions, and a
+References list (with retrieval dates). Gathering and writing are code-driven
+`action` nodes, so no backend Web/Write tool is required (works on copilot /
+openrouter). `--depth` is `quick` (default) · `background` · `deep`; omit it to let
+the model choose.
 
-### `phraseforge` — web page → language-lesson MDX
+### `ebook` — add a chapter to an `ebook.yml` project
 
-Writes the lesson to `docs/<lang>/<level>/<YYYY-MM-DD>-<seq>.mdx` under `--cwd`.
+Orients on a project's `ebook.yml` (language, script, translation language),
+builds the chapter, writes it into the project, and — unless `--no-wire` — wires
+it into `ebook.yml` `text`. **`--kind` is required** and must be `generic` or
+`lang`:
+
+- **`--kind lang`** — a phraseforge language lesson rendered as a `{start-*}`-fenced
+  Markdown chapter (vocabulary, models, source text, transcription, translation,
+  questions, grammar — *no exercises*, the ebook format has none).
+  **Requires `--lang <iso639-3> --script <iso15924>`** — the *learning target*
+  (the foreign language being taught). This is separate from the book's own
+  `ebook.yml` `language`/`script`, which is the **reader/prose** language and
+  drives the translation, transcription (its `lang` tag), and parallel-text side.
+  So a Polish-reader book (`ebook.yml language: pol`) teaching Romanian uses
+  `--kind lang --lang ron --script latn`. Two ways to supply the lesson text:
+  - **`--source <url|file>`** — learn from that text.
+  - **`--prompt "<topic>"` (no `--source`)** — the text is **composed from web
+    evidence**: the model plans ~24 **target-language** search queries, a
+    deterministic action runs them (**`--searches N`**, clamped 20–30), and the
+    lesson is built by **reusing the vocabulary, phraseology, and sentence
+    patterns of the found examples** (simplified to `--level`) — *never written
+    from model memory*. A grounding gate rejects output that doesn't draw on the
+    evidence and retries. Choose the shape with **`--form text|dialog`**.
+- **`--kind generic`** — a web-sourced prose chapter (uses the backend's
+  `WebSearch`), written as `# H1` Markdown.
+
+The target chapter is `--chapter <rel-path>`, else the next numbered file (e.g.
+`.../03.md` → `.../04.md`).
 
 ```bash
-uv run workflow-ai run phraseforge --backend openai \
-  --model gpt-5.4 \
-  --source https://de.wikipedia.org/wiki/Kaffee \
-  --level a2 \
-  --out runs/phraseforge
+# Language lesson from a given source (the @lang skills are bundled — no setup):
+uv run workflow-ai run ebook --backend copilot --model gpt-5.4 \
+  --kind lang --lang deu --script latn \
+  --ebook-yml /path/to/epub-public/src/txt/lang-notes/deu/ebook.yml \
+  --source https://de.wikipedia.org/wiki/Kaffee --level a2 --out runs/ebook
+
+# Language lesson COMPOSED from a topic (evidence-grounded, ~24 web searches):
+uv run workflow-ai run ebook --backend copilot --kind lang --lang ron --script latn \
+  --ebook-yml .../lang-notes/ron/ebook.yml \
+  --prompt "A text about yourself: name, age, where you're from, job" \
+  --level a1 --chapter a1/002.md
+
+# Preview a chapter without touching ebook.yml:
+uv run workflow-ai run ebook --backend copilot --kind lang --lang deu --script latn \
+  --ebook-yml .../deu/ebook.yml --source article.txt --no-wire
+
+# Generic prose chapter (no --lang/--script; uses the book's own language):
+uv run workflow-ai run ebook --backend copilot --kind generic \
+  --ebook-yml .../book/ebook.yml --prompt "The history of movable type"
 ```
 
-**Local Ollama** (OpenAI-compatible `/v1` API):
+`--lang`/`--script` (required for `--kind lang`) are the **learning target**;
+`--source` accepts a URL or a local file path; `--level` is the CEFR level
+(`a1`..`c2`). `--translation-lang` overrides the reader's language (default: the
+book's `ebook.yml` `language`, else `pol`). A non-Latin **target** script triggers
+romanization automatically. The `@lang` conventions for
+**all 42 languages are bundled** in `src/workflow_ai/ebook/skills/lang/` — no
+setup needed; `EBOOK_LANG_SKILLS_DIR` is only an optional override for a custom set.
+
+> **Note:** the compose path issues **20–30 sequential DuckDuckGo searches**
+> (**≈2–3 min** with a **≥5 s** politeness delay to avoid throttling) and can
+> still be throttled; it early-stops and degrades gracefully, but needs enough
+> evidence to proceed.
+
+After the run, build the outputs with the `ebook-cli` tool (from `dpurge/cli-tools`):
 
 ```bash
-uv run workflow-ai run phraseforge --backend openai \
-  --api-base-url http://localhost:11434/v1 \
-  --api-key ollama \
-  --model gemma4:e4b \
-  --source https://de.wikipedia.org/wiki/Kaffee \
-  --level a2
+ebook-cli build -p ebook.yml -f mdx           # fast parse check
+ebook-cli build -p ebook.yml -f epub,pdf,mdx  # EPUB + A5 PDF + Docusaurus MDX
 ```
-
-`--source` accepts a URL or a local file path. `--level` is the CEFR level
-(`a1`..`c2`). `--translation-lang` sets the gloss language (set a default in the
-config file). Latin/Cyrillic/Greek/Korean (Hangul) sources skip the transcription step automatically.
 
 ### Config file
 
@@ -397,10 +647,14 @@ out: runs/latest         # output directory
 verbose: false           # print node events to stdout
 log_file: null           # write verbose output to this file
 
-phraseforge:
+ebook:
   level: null            # CEFR level a1..c2
-  translation_lang: pol  # gloss language
-  cwd: .                 # base dir for docs/<lang>/<level>/
+  translation_lang: pol  # reader's translation language (default: book's ebook.yml language)
+  cwd: .                 # dir to search for the nearest ebook.yml
+  ebook_yml: null        # explicit path to the project's ebook.yml
+  kind: null             # generic | lang  (required for ebook; CLI --kind overrides)
+  lang: null             # learning target ISO 639-3 (required for kind=lang; CLI --lang overrides)
+  script: null           # learning target ISO 15924 (required for kind=lang; CLI --script overrides)
 ```
 
 ### Run options (both workflows)
@@ -418,7 +672,9 @@ phraseforge:
 | `--out DIR` | results directory |
 | `--verbose` / `-v` | print node events and context snapshots to stdout as the run progresses |
 | `--log-file PATH` | write the same verbose output to a file (in addition to stdout when `--verbose`; file-only otherwise) |
-| `--source`, `--level`, `--translation-lang`, `--cwd` | `phraseforge` inputs |
+| `--kind generic\|lang` (required), `--lang`/`--script` (required for kind=lang), `--ebook-yml`, `--source`, `--prompt`, `--level`, `--translation-lang`, `--chapter`, `--cwd`, `--wire`/`--no-wire` | `ebook` inputs |
+| `--form text\|dialog`, `--searches N` | `ebook` compose-from-topic (kind=lang) inputs |
+| `--depth quick\|background\|deep` | `research` report depth |
 
 ## Layout
 
@@ -434,13 +690,14 @@ phraseforge:
 | `src/workflow_ai/backends/copilot.py` | GitHub Copilot backend (httpx) |
 | `src/workflow_ai/research/workflow.yaml` | research workflow graph |
 | `src/workflow_ai/research/schemas.py` | research output schemas |
-| `src/workflow_ai/research/definitions.py` | research verifiers + updaters |
+| `src/workflow_ai/research/definitions.py` | research actions (gather, report) + verifiers + updaters |
 | `src/workflow_ai/research/skills/` | skill files injected into research nodes |
 | `src/workflow_ai/research/tools/` | PEP 723 scripts: web-search, wikipedia-search, arxiv-search, rag-index, rag-query |
-| `src/workflow_ai/phraseforge/workflow.yaml` | phraseforge workflow graph |
-| `src/workflow_ai/phraseforge/schemas.py` | phraseforge output schemas |
-| `src/workflow_ai/phraseforge/definitions.py` | phraseforge actions / router / verifiers |
-| `src/workflow_ai/phraseforge/skills/` | skill files injected into phraseforge nodes |
+| `src/workflow_ai/ebook/workflow.yaml` | ebook workflow graph |
+| `src/workflow_ai/ebook/schemas.py` | ebook output schemas |
+| `src/workflow_ai/ebook/definitions.py` | ebook actions (orient, fetch, render) / routers / verifiers |
+| `src/workflow_ai/ebook/render.py` | in-repo fenced-chapter renderer + ebook.yml wiring |
+| `src/workflow_ai/ebook/skills/` | skill files injected into ebook nodes |
 | `Dockerfile` | self-contained image with workflow-ai |
 | `entrypoint.sh` | Docker entrypoint: SSH setup, env-var → CLI arg mapping |
 
@@ -508,7 +765,7 @@ nodes:
 
 | Value | What runs |
 |-------|-----------|
-| `model` | Calls the agent backend (Claude, Pi) |
+| `model` | Calls the agent backend (Claude, GPT, Copilot) |
 | `action` | Calls a `@action`-registered Python function — no agent invoked |
 
 **`output_kind`** (for `model` nodes)
@@ -658,7 +915,10 @@ depending on data accumulated earlier in the run:
 @skill_resolver("lang")
 def resolve_lang_skill(ref: str, context: WorkflowContext) -> str:
     lang = context.data.get("language", "")   # set by a prior node's updater
-    return f"~/.pi/agent/skills/phraseforge-lang-{lang}/SKILL.md"
+    # skills are bundled in the package; env var is an optional override
+    bundled = Path(__file__).parent / "skills" / "lang"
+    base = Path(os.environ.get("EBOOK_LANG_SKILLS_DIR", str(bundled)))
+    return str(base / f"phraseforge-lang-{lang}" / "SKILL.md")
 ```
 
 The decorator key (`"lang"`) must match the part after `@` in the YAML. Resolution

@@ -1,44 +1,53 @@
-FROM node:22-slim
+# syntax=docker/dockerfile:1
+#
+# Small Python + uv image for workflow-ai. The agent backends are pure-Python
+# SDKs (anthropic / openai / GitHub Copilot via httpx), so there is NO Node
+# runtime — the base image ships uv + Python 3.12 and nothing else heavy.
+#
+# PEP 723 script tools (RAG, web/wiki search) resolve their inline dependencies
+# at runtime via `uv run --script`, so they are not baked into the image
+# (keeps it small; first RAG use needs network to fetch the embedding deps).
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# System deps: git (workflows may clone repos), ssh client, curl (uv installer), ca-certs.
+# System deps: git (workflows may clone repos), ssh client (SSH auth in the
+# entrypoint), ca-certificates.
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         openssh-client \
-        curl \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# --- Node-based agent backends -------------------------------------------
-# claude: native Bun binary downloaded by the npm package for the target platform.
-# pi, codex: Node.js scripts.
-RUN npm install -g --no-audit --no-fund \
-        @anthropic-ai/claude-code@2.1.199 \
-        @earendil-works/pi-coding-agent@0.80.2 \
-        @openai/codex@0.140.0 \
-    && npm cache clean --force
+# Build metadata (passed by CI as build-args).
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BRANCH=unknown
+LABEL org.opencontainers.image.title="workflow-ai" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.ref.name="${BRANCH}"
 
-# --- uv + Python + workflow-ai -------------------------------------------
-ENV UV_HOME=/opt/uv
-ENV PATH="${UV_HOME}/bin:${PATH}"
-RUN curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR="${UV_HOME}/bin" sh
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
 
 WORKDIR /app
 
-# Copy dependency manifest first for layer caching.
-COPY pyproject.toml uv.lock ./
+# 1) Install dependencies first (cache layer) from the manifests only.
+#    README.md is copied too because pyproject declares it as the project readme
+#    (hatchling reads it when the project itself is installed in step 2).
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# 2) Copy source (bundled skills under src/workflow_ai/ebook/skills are included)
+#    and install the project itself into the same venv.
+COPY src/ src/
 RUN uv sync --frozen --no-dev \
     && uv cache clean
 
-# Copy source; skills directories inside the package are included here.
-COPY src/ src/
-
-# --- Runtime defaults ----------------------------------------------------
-# Outputs land in /runs; mount it as a volume to retrieve results from CI.
+# Runtime defaults; outputs land in /runs (mount it to retrieve results).
 ENV WORKFLOW_OUT=/runs
-
 WORKDIR /workspace
 
 COPY entrypoint.sh /entrypoint.sh

@@ -21,9 +21,7 @@ def test_unknown_schema_raises():
 
 def test_default_verifier_passes():
     ctx = WorkflowContext(initial_prompt="x")
-    out = registry.get_schema("report_out").model_validate(
-        {"report_path": "/r", "next_state": "done"}
-    )
+    out = registry.get_schema("report_out").model_validate({"report_path": "/r.md"})
     result = registry.get_verifier(None)(out, ctx)
     assert isinstance(result, VerifyResult)
     assert result.ok
@@ -31,9 +29,7 @@ def test_default_verifier_passes():
 
 def test_registered_verifier_flags_empty_findings():
     ctx = WorkflowContext(initial_prompt="x")
-    out = registry.get_schema("gather_out").model_validate(
-        {"findings": [], "next_state": "synthesize"}
-    )
+    out = registry.get_schema("gather_out").model_validate({"findings": []})
     result = registry.get_verifier("nonempty_findings")(out, ctx)
     assert not result.ok
 
@@ -41,7 +37,9 @@ def test_registered_verifier_flags_empty_findings():
 def test_updater_appends_findings():
     ctx = WorkflowContext(initial_prompt="x")
     out = registry.get_schema("gather_out").model_validate(
-        {"findings": ["f1"], "next_state": "synthesize"}
+        {"findings": [{"claim": "f1", "key": "web:x"}]}
     )
     ctx = registry.get_updater("append_findings")(out, ctx)
-    assert ctx.data["findings"] == ["f1"]
+    assert ctx.data["findings"] == [
+        {"claim": "f1", "key": "web:x", "source": "", "retrieved": ""}
+    ]

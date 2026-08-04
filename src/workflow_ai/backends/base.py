@@ -3,8 +3,8 @@
 A backend receives a fully-specified, history-free invocation and returns the
 assistant's final text plus, when the backend can enforce it natively, a
 structured JSON object. The engine owns parsing/validation policy so that
-backends without native schema support (e.g. Pi) still work — they simply
-return `structured=None` and the engine extracts/validates JSON from `text`.
+backends without native schema support still work — they simply return
+`structured=None` and the engine extracts/validates JSON from `text`.
 """
 
 from __future__ import annotations

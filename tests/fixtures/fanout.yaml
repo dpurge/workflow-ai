@@ -1,0 +1,43 @@
+name: fanout_test
+start: split
+
+# A synthetic fan-out graph used to exercise the engine's fan-out, retry, and
+# context-isolation behaviour independently of any real workflow's shape.
+# split fans out to leaf_a AND leaf_b; each branch runs its leaf, then join,
+# then reaches the shared `done` terminal — two independent terminal branches.
+
+nodes:
+  split:
+    role: "Split the work into parallel branches."
+    schema: fo_split_out
+    fan_out: true
+    prompt: "{initial_prompt}"
+    next:
+      leaf_a: "branch A"
+      leaf_b: "branch B"
+
+  leaf_a:
+    role: "Branch A gatherer."
+    schema: fo_leaf_out
+    updater: fo_append
+    prompt: "{data}"
+    next:
+      join: "hand to join"
+
+  leaf_b:
+    role: "Branch B gatherer."
+    schema: fo_leaf_out
+    updater: fo_append
+    prompt: "{data}"
+    next:
+      join: "hand to join"
+
+  join:
+    role: "Join / finalize."
+    schema: fo_leaf_out
+    prompt: "{data}"
+    next:
+      done: "finish"
+
+  done:
+    terminal: true

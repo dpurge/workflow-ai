@@ -1,4 +1,4 @@
-"""Config loader: file absent, valid YAML, nested phraseforge, error tolerance."""
+"""Config loader: file absent, valid YAML, nested ebook, error tolerance."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from workflow_ai.config import Config, PhraseforgeConfig, load_config
+from workflow_ai.config import Config, EbookConfig, load_config
 
 
 def _write(tmp_path: Path, data: dict) -> Path:
@@ -36,7 +36,7 @@ def test_empty_config_has_none_fields():
     assert cfg.out is None
     assert cfg.verbose is None
     assert cfg.log_file is None
-    assert cfg.phraseforge == PhraseforgeConfig()
+    assert cfg.ebook == EbookConfig()
 
 
 # ---------------------------------------------------------------------------
@@ -45,8 +45,8 @@ def test_empty_config_has_none_fields():
 
 
 def test_loads_backend(tmp_path):
-    cfg = load_config(_write(tmp_path, {"backend": "pi"}))
-    assert cfg.backend == "pi"
+    cfg = load_config(_write(tmp_path, {"backend": "copilot"}))
+    assert cfg.backend == "copilot"
 
 
 def test_loads_model(tmp_path):
@@ -85,35 +85,41 @@ def test_loads_log_file(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# phraseforge section
+# ebook section
 # ---------------------------------------------------------------------------
 
 
-def test_loads_phraseforge_level(tmp_path):
-    cfg = load_config(_write(tmp_path, {"phraseforge": {"level": "b2"}}))
-    assert cfg.phraseforge.level == "b2"
+def test_loads_ebook_level(tmp_path):
+    cfg = load_config(_write(tmp_path, {"ebook": {"level": "b2"}}))
+    assert cfg.ebook.level == "b2"
 
 
-def test_loads_phraseforge_translation_lang(tmp_path):
-    cfg = load_config(_write(tmp_path, {"phraseforge": {"translation_lang": "eng"}}))
-    assert cfg.phraseforge.translation_lang == "eng"
+def test_loads_ebook_translation_lang(tmp_path):
+    cfg = load_config(_write(tmp_path, {"ebook": {"translation_lang": "eng"}}))
+    assert cfg.ebook.translation_lang == "eng"
 
 
-def test_loads_phraseforge_cwd(tmp_path):
-    cfg = load_config(_write(tmp_path, {"phraseforge": {"cwd": "/my/project"}}))
-    assert cfg.phraseforge.cwd == "/my/project"
+def test_loads_ebook_cwd(tmp_path):
+    cfg = load_config(_write(tmp_path, {"ebook": {"cwd": "/my/project"}}))
+    assert cfg.ebook.cwd == "/my/project"
 
 
-def test_phraseforge_partial_leaves_others_none(tmp_path):
-    cfg = load_config(_write(tmp_path, {"phraseforge": {"level": "a1"}}))
-    assert cfg.phraseforge.level == "a1"
-    assert cfg.phraseforge.translation_lang is None
-    assert cfg.phraseforge.cwd is None
+def test_loads_ebook_yml_and_kind(tmp_path):
+    cfg = load_config(_write(tmp_path, {"ebook": {"ebook_yml": "/p/ebook.yml", "kind": "generic"}}))
+    assert cfg.ebook.ebook_yml == "/p/ebook.yml"
+    assert cfg.ebook.kind == "generic"
+
+
+def test_ebook_partial_leaves_others_none(tmp_path):
+    cfg = load_config(_write(tmp_path, {"ebook": {"level": "a1"}}))
+    assert cfg.ebook.level == "a1"
+    assert cfg.ebook.translation_lang is None
+    assert cfg.ebook.cwd is None
 
 
 def test_full_config(tmp_path):
     data = {
-        "backend": "codex",
+        "backend": "openai",
         "model": "o4-mini",
         "api_base_url": None,
         "api_key": None,
@@ -121,19 +127,19 @@ def test_full_config(tmp_path):
         "out": "runs/out",
         "verbose": True,
         "log_file": "run.log",
-        "phraseforge": {
+        "ebook": {
             "level": "c1",
             "translation_lang": "deu",
             "cwd": "/lessons",
         },
     }
     cfg = load_config(_write(tmp_path, data))
-    assert cfg.backend == "codex"
+    assert cfg.backend == "openai"
     assert cfg.model == "o4-mini"
     assert cfg.retries == 2
     assert cfg.verbose is True
-    assert cfg.phraseforge.level == "c1"
-    assert cfg.phraseforge.translation_lang == "deu"
+    assert cfg.ebook.level == "c1"
+    assert cfg.ebook.translation_lang == "deu"
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +168,6 @@ def test_unknown_keys_are_ignored(tmp_path):
     assert cfg.backend == "claude"
 
 
-def test_unknown_phraseforge_keys_are_ignored(tmp_path):
-    cfg = load_config(_write(tmp_path, {"phraseforge": {"level": "a2", "future_option": 42}}))
-    assert cfg.phraseforge.level == "a2"
+def test_unknown_ebook_keys_are_ignored(tmp_path):
+    cfg = load_config(_write(tmp_path, {"ebook": {"level": "a2", "future_option": 42}}))
+    assert cfg.ebook.level == "a2"

@@ -1,0 +1,239 @@
+name: ebook
+start: orient
+
+# Add or edit a chapter in an ebook project defined by an ebook.yml.
+# Orient on the project (language/script/kind/translation), then either build a
+# language lesson (kind: language) rendered as {start-*} fences, or write a
+# web-sourced prose chapter (kind: generic). The chapter .md is written into the
+# project and wired into ebook.yml `text`. The framework owns control flow:
+# actions do IO (orient, fetch, render), the model reasons (clean..questions).
+# No exercise block — the ebook format has none.
+
+nodes:
+  orient:
+    kind: action
+    action: orient_project
+    verifier: ebook_ready
+    router: branch_on_kind
+    next:
+      read: "kind=lang with --source: fetch and process the source into a lesson."
+      gen_write: "kind=generic: write a web-sourced prose chapter."
+      plan_queries: "kind=lang from a --prompt topic: gather evidence and compose."
+
+  read:
+    kind: action
+    action: fetch_source
+    verifier: source_nonempty
+    next:
+      clean: "Hand cleaned source text to the clean step."
+
+  plan_queries:
+    role: >
+      You plan web research for a language lesson. Given a topic and the
+      TARGET (lesson) language, produce focused web-search queries IN THE TARGET
+      LANGUAGE that will surface real example sentences, common phrases, and
+      vocabulary about the topic. Vary the angle (definitions, everyday usage,
+      dialogues, subtopics). Return JSON only.
+    schema: queries_out
+    verifier: queries_min
+    reads: [language, level, max_searches]
+    skills: ["@lang"]
+    prompt: >
+      Target language (ISO 639-3): {language}. CEFR level: {level}.
+
+      Topic for the lesson:
+
+      {initial_prompt}
+
+
+      Return about {max_searches} search queries written in {language}.
+    next:
+      gather_evidence: "Run the searches and collect example sentences."
+
+  gather_evidence:
+    kind: action
+    action: gather_lang_evidence
+    verifier: evidence_min
+    retries: 1
+    next:
+      compose: "Compose the lesson text from the gathered evidence."
+
+  compose:
+    role: >
+      You write the lesson text for a language learner, GROUNDED IN EVIDENCE.
+      Using ONLY the vocabulary, phraseology, and sentence patterns found in the
+      evidence, write a coherent, easy-to-follow lesson in the TARGET (lesson)
+      language about the topic. Simplify and shorten it for the target CEFR level. NEVER
+      invent language from memory — stay as close to the example patterns as
+      possible.
+      For form 'dialog', return `turns`: for EACH turn set `speaker` (optional),
+      `text` (the utterance in the target language, reusing evidence phrasing), AND
+      `translation` (that same turn translated into the reader's language). Do not
+      put speaker names inside `text`/`translation`. ALWAYS also fill the top-level
+      `text` with the whole lesson text. Return JSON only.
+    schema: compose_out
+    updater: store_compose
+    verifier: ground_check
+    retries: 3
+    reads: [evidence_text, language, script, level, form, translation_lang]
+    skills: ["@lang"]
+    prompt: >
+      Target language (ISO 639-3): {language}. Reader's language: {translation_lang}.
+      CEFR level: {level}. Desired form: {form}.
+
+      Topic: {initial_prompt}
+
+
+      Evidence — reuse this vocabulary, phraseology, and sentence patterns; do
+      not write from memory:
+
+      {evidence_text}
+    next:
+      detect: "Hand the composed text to language detection."
+
+  clean:
+    role: >
+      Clean the given source into simple, readable Markdown. Keep only the main
+      body text; drop navigation, ads, and boilerplate. Output Markdown only.
+    output_kind: text
+    produces: text
+    updater: store_clean
+    reads: [source]
+    prompt: "Source:\n\n{source}"
+    next:
+      detect: "Hand cleaned text to language detection."
+
+  detect:
+    role: "Identify the language of the text. Return JSON only."
+    schema: detect_out
+    verifier: detect_ok
+    updater: store_detect
+    reads: [text_snippet, language, script]
+    skills:
+      - ./skills/compact/SKILL.md
+    prompt: >
+      Text excerpt:
+
+      {text_snippet}
+
+
+      The target (lesson) language is '{language}' (ISO 639-3) and its script is
+      '{script}' (ISO 15924, lowercase). Return that same language and script,
+      plus a short lesson title in that language.
+    router: branch_on_script
+    next:
+      transcribe: "Non-Latin script: romanize the text first."
+      translate: "Latin/Cyrillic/Greek/Korean script: skip transcription, go to translation."
+
+  transcribe:
+    role: >
+      Romanize the text. You MUST use the exact transcription system defined in
+      the language skill injected below — follow its rules literally, do not
+      substitute another romanization. Output the transcription only.
+    output_kind: text
+    produces: transcription
+    reads: [text, language, script]
+    skills: ["@lang"]
+    prompt: "Transcribe this {language} text:\n\n{text}"
+    next:
+      translate: "Hand the romanized text to translation."
+
+  translate:
+    role: >
+      Translate the text into natural prose in the reader's translation
+      language. Output the translation only.
+    output_kind: text
+    produces: translation
+    reads: [text, translation_lang]
+    prompt: "Translate to {translation_lang}:\n\n{text}"
+    next:
+      vocabulary: "Build the vocabulary list."
+
+  vocabulary:
+    role: >
+      Extract a vocabulary list from the text. You MUST follow the language skill
+      injected below EXACTLY: copy its headword shape (e.g. article + gender for
+      nouns), its grammar-tag set, and its line format — do not invent tags or
+      formats. Each entry: headword (dictionary form), grammar tag, translation in
+      the reader's language (multiple senses joined with '; '), and transcription
+      for non-Latin scripts. Aim for 15-40 entries by level. Return a JSON array only.
+    schema: vocabulary_out
+    verifier: vocab_min10
+    produces: vocabulary
+    reads: [text, transcription, translation, language, script]
+    skills: ["@lang"]
+    prompt: "Build vocabulary from this {language} text:\n\n{text}"
+    next:
+      models: "Build model phrase patterns."
+
+  models:
+    role: >
+      Build 3-6 model phrase patterns that illustrate constructions from the
+      text, each building toward a full sentence. You MUST follow the language
+      skill injected below for word forms, tags, and conventions. Each: pattern
+      (foreign), translation in the reader's language (required), transcription
+      for non-Latin scripts. Return a JSON array only.
+    schema: models_out
+    verifier: models_3_8
+    produces: models
+    reads: [text, transcription, translation]
+    skills: ["@lang"]
+    prompt: "Build model patterns from this text:\n\n{text}"
+    next:
+      grammar: "Write the grammar block."
+
+  grammar:
+    role: >
+      Write a short grammar block in the reader's translation language,
+      explaining the key grammar the text exercises. You MUST base it on the
+      grammar notes and conventions in the language skill injected below; use its
+      terminology and table conventions. Keep it focused (a few paragraphs and/or
+      a small table). Output Markdown only.
+    output_kind: text
+    produces: grammar
+    reads: [text, language, script, translation_lang]
+    skills: ["@lang"]
+    prompt: "Explain the key grammar in this {language} text, in {translation_lang}:\n\n{text}"
+    next:
+      questions: "Write comprehension questions."
+
+  questions:
+    role: >
+      Write 3-6 short, open-ended comprehension questions IN THE LESSON'S
+      LANGUAGE. Return a JSON array of strings.
+    schema: questions_out
+    verifier: questions_3_8
+    produces: questions
+    reads: [text, language]
+    prompt: "Write comprehension questions in {language} for this text:\n\n{text}"
+    next:
+      render: "Assemble and render the fenced chapter."
+
+  gen_write:
+    role: >
+      You are writing one prose chapter of a book. Research the topic on the web
+      and write it as clean Markdown in the book's language, starting with a
+      single '# ' H1 title. Cite the sources you actually consulted inline. Do
+      not write from memory alone. Output Markdown only.
+    output_kind: text
+    produces: chapter_md
+    reads: [language, book_title]
+    allowed_tools: ["WebSearch"]
+    prompt: >
+      Book language (ISO 639-3): {language}. Write a prose chapter about:
+
+      {initial_prompt}
+
+
+      Start with a '# ' H1 title. Base it on real web sources and cite them.
+    next:
+      render: "Hand the prose chapter to rendering."
+
+  render:
+    kind: action
+    action: render_chapter
+    next:
+      done: "Chapter written and wired into ebook.yml."
+
+  done:
+    terminal: true

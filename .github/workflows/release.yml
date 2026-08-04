@@ -1,0 +1,104 @@
+# Build and publish the workflow-ai Docker image to GHCR on every merge to main.
+#
+# Versioning is CalVer: v<year>.<month>.<micro>, where <micro> auto-increments
+# within the current month from the existing git tags (see "Compute version").
+# The same version tags the git repo and the image (plus :latest).
+#
+# The `release` job only runs if `test` (the full pytest suite) passes.
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One release at a time; queue (do not cancel) concurrent merges so each gets
+# its own sequential CalVer micro version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create + push the git tag
+  packages: write # push the image to GHCR
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv + Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: uv run pytest
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags (needed for CalVer)
+
+      - name: Compute version (CalVer)
+        id: version
+        run: |
+          git fetch --tags --quiet
+
+          prefix="$(date -u +'%Y.%-m')"
+          esc_prefix="${prefix//./\\.}" # escape the dot so sed treats it literally
+          last_micro="$(git tag -l "v${prefix}.*" | sed -E "s/^v${esc_prefix}\.([0-9]+)$/\1/" | sort -n | tail -1)"
+          next_micro="${last_micro:-"-1"}"
+          next_micro=$((next_micro + 1))
+
+          tag="v${prefix}.${next_micro}"
+          owner="${GITHUB_REPOSITORY_OWNER,,}" # GHCR requires a lowercase owner
+
+          {
+            echo "tag=${tag}"
+            echo "version=${tag#v}"
+            echo "commit=$(git rev-parse --short HEAD)"
+            echo "image=ghcr.io/${owner}/workflow-ai"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Releasing ${tag}"
+
+      # NOTE: the tag is pushed BEFORE the image build. A failed build leaves an
+      # orphan tag; the next run's CalVer micro increments past it safely.
+      - name: Create and push tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            BRANCH=${{ github.ref_name }}
+            COMMIT=${{ steps.version.outputs.commit }}
+          tags: |
+            ${{ steps.version.outputs.image }}:${{ steps.version.outputs.version }}
+            ${{ steps.version.outputs.image }}:latest
