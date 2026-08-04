@@ -4,7 +4,14 @@ import json as _json
 import sys
 from typing import Any
 
-from .base import AgentBackend, AgentInvocation, AgentOutputError, AgentResult
+from .base import (
+    AgentBackend,
+    AgentInvocation,
+    AgentOutputError,
+    AgentResult,
+    unwrap_root_list_payload,
+    wrap_root_list_schema,
+)
 from .tools import ToolDef, dispatch, openai_tool_specs, resolve_tools
 from ._agentic import MAX_TURNS_CAP, effective_max_turns
 
@@ -68,6 +75,11 @@ class OpenAIBackend:
         user_tools: list[ToolDef] = resolve_tools(inv.allowed_tools)
         tool_specs = openai_tool_specs(user_tools)
 
+        # RootModel[list] → wrap in an object schema (OpenAI requires type:object).
+        api_schema, was_wrapped = (
+            wrap_root_list_schema(inv.schema) if inv.schema is not None else (None, False)
+        )
+
         messages: list[Any] = [
             {"role": "system", "content": inv.system_prompt},
             {"role": "user", "content": inv.prompt},
@@ -84,10 +96,10 @@ class OpenAIBackend:
                 common["tools"] = tool_specs
 
             try:
-                if inv.output_kind == "json" and inv.schema is not None and not tool_specs:
+                if inv.output_kind == "json" and api_schema is not None and not tool_specs:
                     # parse() enforces strict tools; only use it when no tools are active
                     response = self._client.chat.completions.parse(
-                        **common, response_format=inv.schema
+                        **common, response_format=api_schema
                     )
                 elif inv.output_kind == "json":
                     # json_object mode: valid JSON guaranteed, field names from prompt template
@@ -138,7 +150,7 @@ class OpenAIBackend:
                 messages = messages + [assistant_dict] + tool_results
                 continue
 
-            if inv.output_kind == "json" and inv.schema is not None:
+            if inv.output_kind == "json" and api_schema is not None:
                 parsed = getattr(msg, "parsed", None)
                 if parsed is not None:
                     structured = (
@@ -146,6 +158,7 @@ class OpenAIBackend:
                         if hasattr(parsed, "model_dump")
                         else dict(parsed)
                     )
+                    structured = unwrap_root_list_payload(structured, was_wrapped)
                     return AgentResult(
                         text=msg.content or "",
                         structured=structured,

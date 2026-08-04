@@ -19,7 +19,12 @@ from typing import Any, Sequence
 from pydantic import BaseModel, ValidationError
 
 from . import registry
-from .backends.base import AgentBackend, AgentInvocation, AgentOutputError
+from .backends.base import (
+    AgentBackend,
+    AgentInvocation,
+    AgentOutputError,
+    is_root_list_schema,
+)
 from .graph import NodeSpec, WorkflowGraph
 from .models import BranchResult, NodeRun, RunResult, WorkflowContext
 
@@ -175,6 +180,10 @@ class Engine:
 
     def _validate_json(self, node: NodeSpec, payload: Any) -> BaseModel:
         schema = registry.get_schema(node.schema_name)
+        # Fallback unwrap: if a RootModel[list] came back as {"items": [...]}
+        # (text/json_object path), extract the list before validation.
+        if is_root_list_schema(schema) and isinstance(payload, dict) and "items" in payload:
+            payload = payload["items"]
         try:
             return schema.model_validate(payload)
         except ValidationError as exc:
@@ -238,10 +247,13 @@ def _build_system_prompt(node: NodeSpec, schema: type | None = None) -> str:
         )
     if node.output_kind == "json":
         if schema is not None:
-            template = json.dumps(_schema_template(schema), indent=2)
+            template = _schema_template(schema)
+            is_array = isinstance(template, list)
+            shape_kw = "JSON array" if is_array else "JSON object"
             parts.append(
-                f"After completing any tool calls, respond with a JSON object only "
-                f"(no markdown, no extra text). Fill in every field. Example shape:\n{template}"
+                f"After completing any tool calls, respond with a {shape_kw} only "
+                f"(no markdown, no extra text). Fill in every field. Example shape:\n"
+                f"{json.dumps(template, indent=2)}"
             )
         else:
             parts.append(
@@ -250,10 +262,27 @@ def _build_system_prompt(node: NodeSpec, schema: type | None = None) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
-def _schema_template(model: type) -> dict[str, Any]:
-    """Return a flat {field: hint} dict for a Pydantic model — simpler for small LLMs than JSON Schema."""
-    import inspect
-    from pydantic.fields import FieldInfo
+def _schema_template(model: type) -> dict[str, Any] | list[Any]:
+    """Return a flat {field: hint} dict (or a list with one example element for
+    RootModel[list]) — simpler for small LLMs than full JSON Schema."""
+    from typing import get_args, get_origin
+
+    from pydantic import RootModel
+
+    # RootModel[list[Inner]] → return a one-element list template.
+    if isinstance(model, type) and issubclass(model, RootModel):
+        root_field = model.model_fields.get("root")
+        if root_field and root_field.annotation and get_origin(root_field.annotation) is list:
+            inner = get_args(root_field.annotation)[0]
+            if isinstance(inner, type) and issubclass(inner, BaseModel):
+                entry: dict[str, Any] = {}
+                for name, field in inner.model_fields.items():
+                    annotation = inner.__annotations__.get(name, "")
+                    hint = str(annotation)
+                    desc = field.description or ""
+                    entry[name] = f"<{hint}> {desc}".strip()
+                return [entry]
+            return ["<item>"]
 
     result: dict[str, Any] = {}
     for name, field in model.model_fields.items():

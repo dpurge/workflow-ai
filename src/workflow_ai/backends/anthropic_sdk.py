@@ -4,7 +4,13 @@ import sys
 from typing import Any
 
 from workflow_ai.backends._agentic import effective_max_turns
-from workflow_ai.backends.base import AgentInvocation, AgentOutputError, AgentResult
+from workflow_ai.backends.base import (
+    AgentInvocation,
+    AgentOutputError,
+    AgentResult,
+    unwrap_root_list_payload,
+    wrap_root_list_schema,
+)
 from workflow_ai.backends.tools import anthropic_tool_specs, dispatch, resolve_tools
 
 
@@ -51,8 +57,10 @@ class AnthropicBackend:
         tool_specs = anthropic_tool_specs(user_tools)
 
         emit_schema = None
+        was_wrapped = False
         if inv.output_kind == "json" and inv.schema is not None:
-            emit_schema = inv.schema.model_json_schema()
+            wrapper, was_wrapped = wrap_root_list_schema(inv.schema)
+            emit_schema = wrapper.model_json_schema()
             tool_specs = tool_specs + [
                 {
                     "name": "emit_result",
@@ -105,7 +113,8 @@ class AnthropicBackend:
             for block in tool_use_blocks:
                 if block.name == "emit_result":
                     try:
-                        validated = inv.schema.model_validate(block.input)
+                        input_data = unwrap_root_list_payload(block.input, was_wrapped)
+                        validated = inv.schema.model_validate(input_data)
                         return AgentResult(
                             text=turn_text or " ".join(accumulated_text),
                             structured=validated.model_dump(),

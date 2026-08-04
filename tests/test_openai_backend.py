@@ -192,6 +192,62 @@ def test_json_node_parsed_none_fallback(monkeypatch):
     assert result.text == '{"value":"x"}'
 
 
+def test_json_node_root_list_wrapping(monkeypatch):
+    """RootModel[list[...]] schemas must be wrapped in an object for the OpenAI
+    structured-outputs API (which requires top-level type:object). The result
+    must be unwrapped back to a bare list."""
+    from pydantic import BaseModel, RootModel
+
+    from workflow_ai.backends.base import AgentInvocation
+    from workflow_ai.backends.openai_sdk import OpenAIBackend
+
+    class Entry(BaseModel):
+        name: str
+
+    class EntryList(RootModel[list[Entry]]):
+        pass
+
+    captured: dict[str, Any] = {}
+
+    class FakeCompletions:
+        def parse(self, **kwargs):
+            captured.update(kwargs)
+            rf = kwargs["response_format"]
+            instance = rf(items=[Entry(name="a"), Entry(name="b")])
+            return FakeResponse(
+                choices=[FakeChoice(FakeMessage(content=None, tool_calls=None, parsed=instance))]
+            )
+
+        def create(self, **kwargs):
+            raise AssertionError("should use parse() for structured json node")
+
+    class FakeChat:
+        completions = FakeCompletions()
+
+    class FakeOAI:
+        def __init__(self, **kw):
+            self.chat = FakeChat()
+
+    sys.modules["openai"].OpenAI = FakeOAI
+
+    b = OpenAIBackend(model="m")
+    inv = AgentInvocation(
+        system_prompt="sys", prompt="user", output_kind="json", schema=EntryList
+    )
+    result = b.run(inv)
+
+    # response_format passed to parse() must be a wrapper (BaseModel, not RootModel)
+    rf = captured["response_format"]
+    assert rf is not EntryList
+    assert issubclass(rf, BaseModel)
+    assert not issubclass(rf, RootModel)
+    assert "items" in rf.model_fields
+
+    # structured result must be unwrapped (a list, not {"items": [...]})
+    assert result.structured == [{"name": "a"}, {"name": "b"}]
+    assert isinstance(result.structured, list)
+
+
 def test_tool_loop(monkeypatch):
     import workflow_ai.backends.tools as tools_mod
 

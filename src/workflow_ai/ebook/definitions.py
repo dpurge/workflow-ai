@@ -27,6 +27,7 @@ from typing import Any
 
 import yaml
 
+from ..backends.base import AgentOutputError
 from ..models import VerifyResult, WorkflowContext
 from ..registry import action, router, schema, skill_resolver, updater, verifier
 from . import render as render_mod
@@ -165,12 +166,29 @@ def fetch_source(context: WorkflowContext) -> dict[str, Any]:
         raise ValueError("no source_ref provided (expected {'kind','value'})")
 
     if kind == "url":
-        import urllib.request
+        import httpx
 
-        req = urllib.request.Request(value, headers={"User-Agent": "workflow-ai/0.1"})
-        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (user-provided URL)
-            ctype = resp.headers.get("content-type", "")
-            raw = resp.read().decode("utf-8", errors="replace")
+        try:
+            with httpx.Client(
+                timeout=httpx.Timeout(30.0, connect=10.0),
+                follow_redirects=True,
+                transport=httpx.HTTPTransport(local_address="0.0.0.0"),
+            ) as client:
+                resp = client.get(
+                    value,
+                    headers={
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/125.0.0.0 Safari/537.36"
+                        ),
+                    },
+                )
+                resp.raise_for_status()
+                ctype = resp.headers.get("content-type", "")
+                raw = resp.text
+        except httpx.HTTPError as exc:
+            raise AgentOutputError(f"fetch_source: could not fetch {value}: {exc}") from exc
         is_html = "text/html" in ctype.lower() or bool(re.search(r"<\/?[a-z][\s\S]*>", raw, re.I))
     else:
         raw = Path(value).read_text(encoding="utf-8")

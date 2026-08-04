@@ -125,6 +125,44 @@ def test_json_node_emit_result(monkeypatch):
     assert result.structured == {"value": "hello"}
 
 
+def test_json_node_root_list_wrapping(monkeypatch):
+    """RootModel[list[...]] schemas must be wrapped in an object for the
+    Anthropic tool input_schema (which requires top-level type:object). The
+    tool input must be unwrapped back to a bare list before validation."""
+    from pydantic import BaseModel, RootModel
+
+    from workflow_ai.backends.anthropic_sdk import AnthropicBackend
+    from workflow_ai.backends.base import AgentInvocation
+
+    class Entry(BaseModel):
+        name: str
+
+    class EntryList(RootModel[list[Entry]]):
+        pass
+
+    FakeClass, calls = make_fake_client(
+        [
+            FakeAnthropicResponse(
+                content=[
+                    FakeToolUseBlock(
+                        name="emit_result",
+                        input={"items": [{"name": "a"}, {"name": "b"}]},
+                    )
+                ]
+            )
+        ]
+    )
+    sys.modules["anthropic"].Anthropic = FakeClass
+
+    b = AnthropicBackend(model="m")
+    inv = AgentInvocation(
+        system_prompt="sys", prompt="user", output_kind="json", schema=EntryList
+    )
+    result = b.run(inv)
+    assert result.structured == [{"name": "a"}, {"name": "b"}]
+    assert isinstance(result.structured, list)
+
+
 def test_tool_loop_dispatches_and_continues(monkeypatch):
     import workflow_ai.backends.tools as tools_mod
 
