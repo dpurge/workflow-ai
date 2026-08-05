@@ -26,16 +26,31 @@ scientific base; the reading rules reflect Modern Hebrew pronunciation.
 
 **Consonants (22 letters):**
 
-| Hebrew | SBL | | Hebrew | SBL | | Hebrew | SBL |
-|--------|-----|-|--------|-----|-|--------|-----|
-| א | ʾ | | ט | ṭ | | פ | p / f |
-| ב | b / v | | י | y | | צ | ṣ |
-| ג | g | | כ | k / kh | | ק | q |
-| ד | d | | ל | l | | ר | r |
-| ה | h | | מ | m | | שׁ | š |
-| ו | v | | נ | n | | שׂ | ś |
-| ז | z | | ס | s | | ת | t |
-| ח | ḥ | | ע | ʿ | | | |
+| Hebrew | SBL |
+|--------|-----|
+| א | ʾ |
+| ב | b / v |
+| ג | g |
+| ד | d |
+| ה | h |
+| ו | v |
+| ז | z |
+| ח | ḥ |
+| ט | ṭ |
+| י | y |
+| כ | k / kh |
+| ל | l |
+| מ | m |
+| נ | n |
+| ס | s |
+| ע | ʿ |
+| פ | p / f |
+| צ | ṣ |
+| ק | q |
+| ר | r |
+| שׁ | š |
+| שׂ | ś |
+| ת | t |
 
 **Final forms** (same consonant value, different glyph):
 

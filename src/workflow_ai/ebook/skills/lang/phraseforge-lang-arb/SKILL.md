@@ -25,18 +25,36 @@ scientific base; the reading rules make it read the way an Arab reads aloud.
 ### Letter correspondences
 
 Consonants:
-| Arabic | DIN | | Arabic | DIN | | Arabic | DIN |
-|--------|-----|-|--------|-----|-|--------|-----|
-| ء | ʾ | | ز | z | | ق | q |
-| ب | b | | س | s | | ك | k |
-| ت | t | | ش | š | | ل | l |
-| ث | ṯ | | ص | ṣ | | م | m |
-| ج | ǧ | | ض | ḍ | | ن | n |
-| ح | ḥ | | ط | ṭ | | ه | h |
-| خ | ḫ | | ظ | ẓ | | و | w |
-| د | d | | ع | ʿ | | ي | y |
-| ذ | ḏ | | غ | ġ | | | |
-| ر | r | | ف | f | | | |
+| Arabic | DIN |
+|--------|-----|
+| ء | ʾ |
+| ب | b |
+| ت | t |
+| ث | ṯ |
+| ج | ǧ |
+| ح | ḥ |
+| خ | ḫ |
+| د | d |
+| ذ | ḏ |
+| ر | r |
+| ز | z |
+| س | s |
+| ش | š |
+| ص | ṣ |
+| ض | ḍ |
+| ط | ṭ |
+| ظ | ẓ |
+| ع | ʿ |
+| غ | ġ |
+| ف | f |
+| ق | q |
+| ك | k |
+| ل | l |
+| م | m |
+| ن | n |
+| ه | h |
+| و | w |
+| ي | y |
 
 Vowels & special glyphs:
 | Sign | DIN | Note |
