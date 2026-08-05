@@ -34,18 +34,70 @@ class DetectOut(BaseModel):
 
 
 class VocabularyEntry(BaseModel):
-    headword: str
-    grammar: str | None = None
-    transcription: str | None = None
-    translation: str | None = None
-    notes: str | None = None
+    headword: str = Field(description="The foreign headword in dictionary form.")
+    grammar: str | None = Field(
+        default=None,
+        description=(
+            "Grammar tag CONTENT ONLY — space-separated tokens, with NO curly braces. "
+            "Write e.g. `N`, `V`, `Adj`, `N m sg`. Do NOT wrap it: write `N`, never `{N}` or "
+            "`{{N}}` — the renderer adds the braces. Follow the language skill for the exact "
+            "token set. Omit (null) if unsure."
+        ),
+    )
+    transcription: str | None = Field(
+        default=None,
+        description=(
+            "Romanization of the headword. REQUIRED for non-Latin scripts (arab, hans, jpan, "
+            "kore, hebr, …): fill it for EVERY entry, never omit it, never move it to a separate "
+            "list — it belongs inline on each entry. Use the romanization system the language "
+            "skill specifies. Leave null ONLY for Latin/Cyrillic/Greek scripts."
+        ),
+    )
+    translation: str | None = Field(
+        default=None,
+        description=(
+            "Gloss in the reader's language. Join multiple senses with '; '. Write it in that "
+            "language's FULL native orthography — keep EVERY diacritic (Polish ą ę ć ł ń ó ś ź ż, "
+            "etc.); never ASCII-strip or substitute plain letters (książka, not ksiazka)."
+        ),
+    )
+    notes: str | None = Field(
+        default=None,
+        description=(
+            "Leave null for almost every entry. Add a SHORT note ONLY when the entry is genuinely "
+            "ambiguous or hard to understand without it (false friend, non-obvious sense or usage, "
+            "easily-confused homograph). Do NOT add HSK/level tags, literal glosses, or general "
+            "'helpful' commentary — unnecessary notes make the lesson harder to read."
+        ),
+    )
 
 
 class ModelEntry(BaseModel):
-    pattern: str
-    translation: str
-    transcription: str | None = None
-    notes: str | None = None
+    pattern: str = Field(
+        description="The foreign phrase or pattern (built progressively toward a full sentence)."
+    )
+    translation: str = Field(
+        description=(
+            "Gloss in the reader's language. Join multiple senses with '; '. Write it in that "
+            "language's FULL native orthography — keep EVERY diacritic (Polish ą ę ć ł ń ó ś ź ż, "
+            "etc.); never ASCII-strip or substitute plain letters (książka, not ksiazka)."
+        )
+    )
+    transcription: str | None = Field(
+        default=None,
+        description=(
+            "Romanization of the pattern. REQUIRED for non-Latin scripts (arab, hans, jpan, kore, "
+            "hebr, …): fill it inline for EVERY entry, never omit. Use the language skill's system. "
+            "Leave null ONLY for Latin/Cyrillic/Greek scripts."
+        ),
+    )
+    notes: str | None = Field(
+        default=None,
+        description=(
+            "Leave null for almost every entry. Add a short note ONLY when genuinely needed for "
+            "comprehension — no literal glosses or filler."
+        ),
+    )
 
 
 class VocabularyList(RootModel[list[VocabularyEntry]]):

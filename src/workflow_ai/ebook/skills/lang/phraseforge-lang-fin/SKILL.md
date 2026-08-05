@@ -22,7 +22,7 @@ Not needed. Finnish uses Latin script. Preserve: `ä ö å` (the last used mainl
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Finnish-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Finnish-specific rules:
 
 - **No grammatical gender, no articles.** All nouns take `{N}`. Plural formed by vowel lengthening + `-t` (partitive plural `-a`/`-ä`).
 - **Verbs:** infinitive form (ending `-a`/`-ä`, `-da`/`-dä`, or `-la`/`-la`). Tag `{V}`. Mark conjugation type (1–6): `{V 1}` through `{V 6}`. Add `irreg` for irregular.
@@ -34,12 +34,12 @@ talo {N} = dom
 nainen {N} = kobieta
 lapsi {N} = dziecko
 
-puhua {V 1} = mowic
-nahda {V 4 irreg} = widziec
-olla {V irreg} = byc
-omistaa {V 1} = miec; posiadac
+puhua {V 1} = mówić
+nähdä {V 4 irreg} = widzieć
+olla {V irreg} = być
+omistaa {V 1} = mieć; posiadać
 
-pieni {Adj} = maly
+pieni {Adj} = mały
 nopeasti {Adv} = szybko
 ```
 

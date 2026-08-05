@@ -22,7 +22,7 @@ Not needed. Hungarian uses Latin script. Preserve diacritics: `á é í ó ö ő
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Hungarian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Hungarian-specific rules:
 
 - **No grammatical gender, no articles in headwords.** All nouns take `{N}`. Indefinite article `egy`; definite `a`/`az` — not part of headword.
 - **Verbs:** third-person singular present (dictionary form). Tag `{V}`. Add `irreg` for irregular.
@@ -34,12 +34,12 @@ ház {N} = dom
 nő {N} = kobieta
 gyerek {N} = dziecko
 
-beszél {V} = mowic
-lát {V} = widziec
-van {V irreg} = byc
-van neki {Phrase} = miec
+beszél {V} = mówić
+lát {V} = widzieć
+van {V irreg} = być
+van neki {Phrase} = mieć
 
-kicsi {Adj} = maly
+kicsi {Adj} = mały
 gyorsan {Adv} = szybko
 ```
 

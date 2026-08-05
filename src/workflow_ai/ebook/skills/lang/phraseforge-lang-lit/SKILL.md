@@ -22,7 +22,7 @@ Not needed. Lithuanian uses Latin script. Preserve diacritics: `ą č ę ė į �
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Lithuanian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Lithuanian-specific rules:
 
 - **Nouns:** no articles; mark gender: `{N m}` / `{N f}`. Lithuanian has 5 noun declension classes — note the class when relevant: `{N m 1}` … `{N m 5}`.
 - **Verbs:** infinitive (ending in `-ti`), tag `{V}`. Mark conjugation class optionally: `{V 1}` (I-class), `{V 2}` (II-class), `{V 3}` (III-class). Add `irreg` for irregular.
@@ -34,12 +34,12 @@ namas {N m} = dom
 moteris {N f} = kobieta
 vaikas {N m} = dziecko
 
-kalbeti {V 2} = mowic
-matyti {V 2} = widziec
-buti {V irreg} = byc
-tureti {V 2} = miec
+kalbeti {V 2} = mówić
+matyti {V 2} = widzieć
+buti {V irreg} = być
+tureti {V 2} = mieć
 
-mazas {Adj} = maly
+mazas {Adj} = mały
 greitai {Adv} = szybko
 ```
 

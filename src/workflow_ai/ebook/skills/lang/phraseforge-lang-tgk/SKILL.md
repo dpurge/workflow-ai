@@ -24,7 +24,7 @@ Not required by default (Cyrillic excluded from transcription block).
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Tajik-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Tajik-specific rules:
 
 - **No grammatical gender, no articles.** All nouns take `{N}`. Plural formed by suffix `-ҳо` (`-ho`) or `-он` (`-on`).
 - **Verbs:** infinitive (ending `-ан`/`-idан`). Tag `{V}`. Add `irreg` for irregular.
@@ -36,12 +36,12 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Tajik-specif
 зан {N} = kobieta
 бача {N} = dziecko
 
-гап задан {V} = mowic; rozmawiac
-дидан {V} = widziec
-будан {V irreg} = byc
-доштан {V irreg} = miec
+гап задан {V} = mówić; rozmawiać
+дидан {V} = widzieć
+будан {V irreg} = być
+доштан {V irreg} = mieć
 
-хурд {Adj} = maly
+хурд {Adj} = mały
 тез {Adv} = szybko
 ```
 

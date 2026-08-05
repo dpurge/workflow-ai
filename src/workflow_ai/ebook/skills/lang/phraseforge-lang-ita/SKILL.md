@@ -22,7 +22,7 @@ Not needed. Italian uses Latin script. Preserve accents: `à è é ì î ò ó �
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Italian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Italian-specific rules:
 
 - **Nouns:** include the **definite article** (`il`, `lo`, `la`, `l'`, `i`, `gli`, `le`) in the headword. Mark gender: `{N m}` / `{N f}`.
 - **Verbs:** infinitive form. Tag with verb class: `{V are}`, `{V ere}`, `{V ire}`. Add `irreg` for irregular verbs.
@@ -33,13 +33,13 @@ il cane {N m} = pies
 la casa {N f} = dom
 gli amici {N m pl} = przyjaciele
 
-parlare {V are} = mowic
-vedere {V ere irreg} = widziec
-dormire {V ire} = spac
-essere {V irreg} = byc
-avere {V irreg} = miec
+parlare {V are} = mówić
+vedere {V ere irreg} = widzieć
+dormire {V ire} = spać
+essere {V irreg} = być
+avere {V irreg} = mieć
 
-piccolo {Adj} = maly
+piccolo {Adj} = mały
 veloce {Adj} = szybki
 bene {Adv} = dobrze
 ```

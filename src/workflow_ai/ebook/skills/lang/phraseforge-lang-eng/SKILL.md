@@ -22,7 +22,7 @@ Not needed. English uses Latin script.
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. English-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. English-specific rules:
 
 - **Nouns:** no articles in headword; no grammatical gender. Use `{N}`. Mark `pl` for plural-only nouns.
 - **Verbs:** base (infinitive) form without `to`; tag `{V}`. Add `irreg` for irregular past tense.
@@ -34,11 +34,11 @@ dog {N} = pies
 house {N} = dom
 children {N pl} = dzieci
 
-run {V} = biec; biegac
-take {V irreg} = brac
-give up {V} = rezygnowac
+run {V} = biec; biegać
+take {V irreg} = brać
+give up {V} = rezygnować
 
-small {Adj} = maly
+small {Adj} = mały
 quickly {Adv} = szybko
 ```
 

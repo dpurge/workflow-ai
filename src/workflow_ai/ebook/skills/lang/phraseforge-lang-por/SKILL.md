@@ -22,7 +22,7 @@ Not needed. Portuguese uses Latin script. Preserve accents and special character
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Portuguese-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Portuguese-specific rules:
 
 - **Nouns:** include the **definite article** (`o`, `a`, `os`, `as`) in the headword. Mark gender: `{N m}` / `{N f}`.
 - **Verbs:** infinitive form. Tag with verb class: `{V ar}`, `{V er}`, `{V ir}`. Add `irreg` for irregular verbs.
@@ -33,14 +33,14 @@ o cachorro {N m} = pies
 a casa {N f} = dom
 os amigos {N m pl} = przyjaciele
 
-falar {V ar} = mowic
-comer {V er} = jesc
-partir {V ir} = odchodzic
-ser {V irreg} = byc
-ter {V irreg} = miec
+falar {V ar} = mówić
+comer {V er} = jeść
+partir {V ir} = odchodzić
+ser {V irreg} = być
+ter {V irreg} = mieć
 
-pequeno {Adj} = maly
-rapido {Adj} = szybki
+pequeno {Adj} = mały
+rápido {Adj} = szybki
 ```
 
 ## Conjugation tables (optional, B1+)

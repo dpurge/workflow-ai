@@ -22,22 +22,22 @@ Not needed. Romanian uses Latin script. Preserve special characters: `ă â î �
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Romanian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Romanian-specific rules:
 
 - **Nouns:** Romanian has three genders (m/f/n) and a **postpositional definite article** (suffixed: `-ul`, `-a`, `-le`). Show the indefinite form as headword; mark gender. `{N m}` / `{N f}` / `{N n}`.
 - **Verbs:** infinitive (short form without `a`), tag `{V}`. Add `irreg` for irregular.
 - **Adjectives:** masculine singular, tag `{Adj}`.
 
 ```
-caine {N m} = pies
-casa {N f} = dom
+câine {N m} = pies
+casă {N f} = dom
 copil {N n} = dziecko
 
-a vorbi {V} = mowic
-a fi {V irreg} = byc
-a avea {V irreg} = miec
+a vorbi {V} = mówić
+a fi {V irreg} = być
+a avea {V irreg} = mieć
 
-mic {Adj} = maly
+mic {Adj} = mały
 repede {Adv} = szybko
 ```
 

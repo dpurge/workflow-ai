@@ -15,6 +15,7 @@ Mirrors the cli-tools `ebook` builder's fence contract:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -46,10 +47,13 @@ def _vocab_line(entry: dict[str, Any]) -> str | None:
     if not headword:
         return None
     parts = [headword]
-    grammar = (entry.get("grammar") or "").strip()
+    # Defensive: a model may emit the tag already wrapped ("{N}"/"{{N}}") or the
+    # transcription bracketed ("[gǒu]"). Strip the OUTER brace/bracket run only
+    # (not individual inner chars) so the renderer's own wrapping never doubles.
+    grammar = re.sub(r"^\{+|\}+$", "", (entry.get("grammar") or "").strip()).strip()
     if grammar:
         parts.append("{" + grammar + "}")
-    transcription = (entry.get("transcription") or "").strip()
+    transcription = re.sub(r"^\[+|\]+$", "", (entry.get("transcription") or "").strip()).strip()
     if transcription:
         parts.append("[" + transcription + "]")
     line = " ".join(parts)
@@ -70,7 +74,7 @@ def _model_line(entry: dict[str, Any]) -> str | None:
     if not pattern or not translation:
         return None
     left = pattern
-    transcription = (entry.get("transcription") or "").strip()
+    transcription = re.sub(r"^\[+|\]+$", "", (entry.get("transcription") or "").strip()).strip()
     if transcription:
         left += " [" + transcription + "]"
     return f"{left} = " + _with_notes(entry.get("translation"), entry.get("notes"))

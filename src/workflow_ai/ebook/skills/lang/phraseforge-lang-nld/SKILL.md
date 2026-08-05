@@ -22,7 +22,7 @@ Not needed. Dutch uses Latin script. Preserve: `é è ë ij/ij`. Note that `ij` 
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Dutch-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Dutch-specific rules:
 
 - **Nouns:** Dutch has two article types — `de` (common gender, covering former masculine and feminine) and `het` (neuter). Include the article in the headword. Mark: `{N de}` / `{N het}`.
 - **Verbs:** infinitive form, tag `{V}`. Separable verbs: `{V sep}`. Add `irreg` for irregular.
@@ -33,13 +33,13 @@ de hond {N de} = pies
 het huis {N het} = dom
 de kinderen {N de pl} = dzieci
 
-praten {V} = mowic
-zien {V irreg} = widziec
-opstaan {V sep} = wstawac
-zijn {V irreg} = byc
-hebben {V irreg} = miec
+praten {V} = mówić
+zien {V irreg} = widzieć
+opstaan {V sep} = wstawać
+zijn {V irreg} = być
+hebben {V irreg} = mieć
 
-klein {Adj} = maly
+klein {Adj} = mały
 snel {Adv} = szybko
 ```
 

@@ -22,7 +22,7 @@ Not required by default (Cyrillic is excluded from the transcription block per `
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Russian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Russian-specific rules:
 
 - **Nouns:** no articles; mark gender: `{N m}` / `{N f}` / `{N n}`. Add `an` for animate masculines: `{N m an}`.
 - **Verbs:** infinitive form. Mark aspect: `{V impf}` / `{V pf}`. Add `irreg` for irregular.
@@ -34,12 +34,12 @@ dom {N m} = dom
 zhenshchina {N f} = kobieta
 rebyonok {N m an} = dziecko
 
-govorit {V impf} = mowic
-uvidet {V pf} = zobaczyc
-byt {V irreg} = byc
-imet {V impf} = miec
+govorit {V impf} = mówić
+uvidet {V pf} = zobaczyć
+byt {V irreg} = być
+imet {V impf} = mieć
 
-malenkiy {Adj} = maly
+malenkiy {Adj} = mały
 bystro {Adv} = szybko
 ```
 

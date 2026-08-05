@@ -32,25 +32,25 @@ Preserve: `à á ả ã ạ ă ắ ằ ẳ ẵ ặ â ấ ầ ẩ ẫ ậ è é 
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Vietnamese-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Vietnamese-specific rules:
 
 - **No grammatical gender, no articles, no case inflection.** All nouns take `{N}`.
-- **Classifiers (loại từ):** similar to Chinese/Japanese measure words. Note the primary classifier when relevant: `{N cl con}` (animals), `{N cl cai}` (objects), `{N cl nguoi}` (persons), etc.
+- **Classifiers (loại từ):** similar to Chinese/Japanese measure words. Note the primary classifier when relevant: `{N cl con}` (animals), `{N cl cái}` (objects), `{N cl người}` (persons), etc.
 - **Verbs:** uninflected form, tag `{V}`. Tense and aspect are expressed by adverbs/particles (`đã` past, `đang` present progressive, `sẽ` future).
 - **Adjectives:** uninflected form, tag `{Adj}`.
 
 ```
 chó {N cl con} = pies
-nhà {N cl cai} = dom
+nhà {N cl cái} = dom
 người phụ nữ {N cl người} = kobieta
 đứa trẻ {N cl đứa} = dziecko
 
-nói chuyện {V} = mowic; rozmawiac
-nhìn thấy {V} = widziec
-là {V} = byc (kopula)
-có {V} = miec; byc (posiadanie i istnienie)
+nói chuyện {V} = mówić; rozmawiać
+nhìn thấy {V} = widzieć
+là {V} = być (kopula)
+có {V} = mieć; być (posiadanie i istnienie)
 
-nhỏ {Adj} = maly
+nhỏ {Adj} = mały
 nhanh {Adv} = szybko
 ```
 

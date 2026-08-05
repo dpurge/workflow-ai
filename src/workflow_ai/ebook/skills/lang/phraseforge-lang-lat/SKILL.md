@@ -22,26 +22,26 @@ Not needed. Latin uses Latin script. Macrons (ā ē ī ō ū) are optional but r
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Latin-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Latin-specific rules:
 
 - **Nouns:** nominative singular as headword; mark gender: `{N m}` / `{N f}` / `{N n}`. Optionally add declension class: `{N f 1}` (1st), `{N m 2}` (2nd), `{N f 3}` (3rd), etc.
 - **Verbs:** first-person present active indicative as headword (dictionary form). Tag with conjugation class: `{V 1}` (1st), `{V 2}` (2nd), `{V 3}` (3rd), `{V 4}` (4th). Add `irreg` for irregular.
 - **Adjectives:** masculine nominative singular (2-1-2 or 3rd declension), tag `{Adj}`.
 
 ```
-rana {N f} = zaba
+rana {N f} = żaba
 aqua {N f} = woda
 ripa {N f} = brzeg
-puer {N m} = chlopiec
-templum {N n} = swiatynia
+puer {N m} = chłopiec
+templum {N n} = świątynia
 
-amare {V 1} = kochac
-videre {V 2} = widziec
-esse {V irreg} = byc
-ire {V irreg} = isc
+amare {V 1} = kochać
+videre {V 2} = widzieć
+esse {V irreg} = być
+ire {V irreg} = iść
 
 magnus {Adj} = wielki
-parvus {Adj} = maly
+parvus {Adj} = mały
 ```
 
 ## Declension tables (B1+)

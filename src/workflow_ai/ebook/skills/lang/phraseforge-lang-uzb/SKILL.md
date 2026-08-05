@@ -24,7 +24,7 @@ Not needed. Uzbek uses Latin script. Preserve: `g' o' sh ch ng`.
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Uzbek-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Uzbek-specific rules:
 
 - **No grammatical gender, no articles.** All nouns take `{N}`.
 - **Verbs:** infinitive (ending `-moq`). Tag `{V}`. Add `irreg` for irregular.
@@ -36,12 +36,12 @@ uy {N} = dom; mieszkanie
 ayol {N} = kobieta
 bola {N} = dziecko
 
-gapirmoq {V} = mowic
-ko'rmoq {V} = widziec
-bo'lmoq {V} = byc
-ega bo'lmoq {V} = miec; posiadac
+gapirmoq {V} = mówić
+ko'rmoq {V} = widzieć
+bo'lmoq {V} = być
+ega bo'lmoq {V} = mieć; posiadać
 
-kichik {Adj} = maly
+kichik {Adj} = mały
 tez {Adv} = szybko
 ```
 

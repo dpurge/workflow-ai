@@ -22,7 +22,7 @@ Not required. Greek script is excluded from transcription block per `phraseforge
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Modern Greek-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Modern Greek-specific rules:
 
 - **Nouns:** include the **definite article** (`ο`/`m`, `η`/`f`, `το`/`n`) in the headword. Mark gender: `{N m}` / `{N f}` / `{N n}`.
 - **Verbs:** first-person singular present (dictionary form). Tag `{V}`. Two conjugation classes: `-ω` (type A) and `-άω`/`-ώ` (type B): `{V A}` / `{V B}`. Add `irreg` for irregular.
@@ -34,12 +34,12 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Modern Greek
 η γυναίκα {N f} = kobieta
 το παιδί {N n} = dziecko
 
-μιλώ {V B} = mowic
-βλέπω {V A} = widziec
-είμαι {V irreg} = byc
-έχω {V A} = miec
+μιλώ {V B} = mówić
+βλέπω {V A} = widzieć
+είμαι {V irreg} = być
+έχω {V A} = mieć
 
-μικρός {Adj} = maly
+μικρός {Adj} = mały
 γρήγορα {Adv} = szybko
 ```
 

@@ -22,7 +22,7 @@ Not needed. Danish uses Latin script. Preserve: `æ ø å`.
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Danish-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Danish-specific rules:
 
 - **Nouns:** Danish has two genders: common (`c`) and neuter (`n`). Include the **indefinite article** (`en` for common, `et` for neuter) in the headword. Mark gender: `{N c}` / `{N n}`.
 - **Verbs:** infinitive form (bare, without `at`), tag `{V}`.
@@ -31,13 +31,13 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Danish-speci
 ```
 en hund {N c} = pies
 et hus {N n} = dom
-bornen {N c pl} = dzieci
+børnen {N c pl} = dzieci
 
-tale {V} = mowic
-vaere {V irreg} = byc
-have {V irreg} = miec
+tale {V} = mówić
+være {V irreg} = być
+have {V irreg} = mieć
 
-lille {Adj} = maly
+lille {Adj} = mały
 hurtigt {Adv} = szybko
 ```
 

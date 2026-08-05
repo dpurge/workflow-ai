@@ -22,7 +22,7 @@ Not needed. French uses Latin script. Preserve all accents and special character
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. French-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. French-specific rules:
 
 - **Nouns:** include the **definite article** (`le`, `la`, `l'`, `les`) in the headword to show gender. Mark gender: `{N m}` / `{N f}`.
 - **Verbs:** infinitive form. Tag with verb group: `{V er}` (-er), `{V ir}` (-ir), `{V re}` (-re). Add `irreg` for irregular verbs.
@@ -33,19 +33,19 @@ le chien {N m} = pies
 la maison {N f} = dom
 les enfants {N m pl} = dzieci
 
-parler {V er} = mowic
-finir {V ir} = konczyc
-prendre {V re irreg} = brac
-etre {V irreg} = byc
-avoir {V irreg} = miec
+parler {V er} = mówić
+finir {V ir} = kończyć
+prendre {V re irreg} = brać
+etre {V irreg} = być
+avoir {V irreg} = mieć
 
-petit {Adj} = maly
+petit {Adj} = mały
 vite {Adv} = szybko
 ```
 
 **Multiple senses** separated by `; `:
 ```
-sauver {V er} = ratowac; zbawiac
+sauver {V er} = ratować; zbawiać
 ```
 
 ## Conjugation tables (optional, B1+)

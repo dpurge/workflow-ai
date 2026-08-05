@@ -18,29 +18,74 @@ description: Modern Standard Arabic (al-arabiyya al-fusha, ISO 639-3 arb) langua
 
 ## Transcription
 
-Required (non-Latin script). Use **DIN 31635** romanization system. System attribute: `DIN31635`.
+Required (non-Latin script), inline on EVERY vocabulary and models entry AND for the full text.
+System: **DIN 31635** (attr `DIN31635`), applied as a HYBRID — the letter values below are the
+scientific base; the reading rules make it read the way an Arab reads aloud.
 
-Key correspondences:
-| Arabic | DIN 31635 | | Arabic | DIN 31635 |
-|--------|-----------|-|--------|-----------|
-| ب | b | | ظ | ẓ |
-| ت | t | | ع | ʿ |
-| ث | ṯ | | غ | ġ |
-| ج | ǧ | | ف | f |
-| ح | ḥ | | ق | q |
-| خ | ḫ | | ك | k |
-| د | d | | ل | l |
-| ذ | ḏ | | م | m |
-| ر | r | | ن | n |
-| ز | z | | ه | h |
-| س | s | | و | w / ū |
-| ش | š | | ي | y / ī |
-| ص | ṣ | | ء | ʾ |
-| ض | ḍ | | ى/ا | ā |
+### Letter correspondences
+
+Consonants:
+| Arabic | DIN | | Arabic | DIN | | Arabic | DIN |
+|--------|-----|-|--------|-----|-|--------|-----|
+| ء | ʾ | | ز | z | | ق | q |
+| ب | b | | س | s | | ك | k |
+| ت | t | | ش | š | | ل | l |
+| ث | ṯ | | ص | ṣ | | م | m |
+| ج | ǧ | | ض | ḍ | | ن | n |
+| ح | ḥ | | ط | ṭ | | ه | h |
+| خ | ḫ | | ظ | ẓ | | و | w |
+| د | d | | ع | ʿ | | ي | y |
+| ذ | ḏ | | غ | ġ | | | |
+| ر | r | | ف | f | | | |
+
+Vowels & special glyphs:
+| Sign | DIN | Note |
+|------|-----|------|
+| ـَ fatḥa | a | short |
+| ـِ kasra | i | short |
+| ـُ ḍamma | u | short |
+| ا / ى | ā | long a (ى = alif maqṣūra) |
+| و | ū | long u (else consonant w) |
+| ي | ī | long i (else consonant y) |
+| آ | ʾā | alif madda |
+| ة | a / at | tāʾ marbūṭa: `a` in pause, `at` in construct (iḍāfa) |
+| ـً ـٍ ـٌ | an / in / un | tanwīn — normally dropped (see rules); adverbial ـً `-an` IS read |
+| ّ shadda | (double) | double the consonant: مدرّس → mudarris |
+| ال | al- / (assim.) | definite article — see sun/moon rule |
+
+### Reading rules (natural)
+
+1. **Short vowels are written** from the vocalized/dictionary reading. If the source is unpointed and a
+   vowel is genuinely ambiguous, write consonants + long vowels only and omit the uncertain short vowel;
+   do not guess rare or dialectal forms.
+2. **Sun-letter assimilation.** The article's `l` assimilates before the 14 sun letters
+   (ت ث د ذ ر ز س ش ص ض ط ظ ل ن) → double that letter: الشمس → *aš-šams*, الرجل → *ar-raǧul*. Before moon
+   letters keep `al-`: القمر → *al-qamar*.
+3. **Hamzat al-waṣl elides** after a preceding vowel in connected reading: في المدرسة → *fī l-madrasa*;
+   إلى البيت → *ilā l-bayt*.
+4. **Case endings (iʿrāb) dropped by default** everywhere — including iḍāfa chains and vocative — kept
+   only if the source is explicitly vocalized and marks them. Adverbial ـً is read: شكراً → *šukran*.
+5. **tāʾ marbūṭa** → `a` in pause, `at` in construct: مدينة → *madīna*, but مدينة القاهرة → *madīnat
+   al-Qāhira*.
+6. Capitalize the first word of each sentence and all proper nouns; everything else lower-case.
+
+### Typography
+
+- Latin punctuation `, . ! ? : ; ' " ( )` — never Arabic `، ؛ ؟ «　»`.
+- Keep all diacritics (ḥ ṣ ṭ ḍ ā ī ū š ġ ḫ ʿ ʾ …). Standard word spacing; hyphen after a kept `al-`.
+
+### Example
+
+`ذهب الطالب إلى المدرسة في الصباح.` → `Ḏahaba ṭ-ṭālib ilā l-madrasa fī ṣ-ṣabāḥ.`
+(sun-letter assimilation aṭ-/aṣ-, waṣl elision after vowels, case endings dropped, tāʾ marbūṭa → `a`,
+sentence-initial capital.)
+
+*(Dialects `apc`/`arz` reuse this table with a short pronunciation delta in their own skills; Persian
+`fas` uses Persian letter values — see its skill.)*
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Arabic-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Arabic-specific rules:
 
 - **Nouns:** mark gender: `{N m}` / `{N f}`. For paradigm pairs (singular + broken plural), list both with `sg`/`pl`: `{N m sg}` / `{N m pl}`.
 - **Verbs:** third-person masculine singular perfect (dictionary form). Tag `{V}`.
@@ -48,20 +93,18 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Arabic-speci
 - Short vowels (harakat) should be included in headwords for learners at A1–B1.
 
 ```
-كَلْبٌ {N m sg} = pies
-كِلَابٌ {N m pl} = psy
-بَيْتٌ {N m sg} = dom
-اِمْرَأَةٌ {N f sg} = kobieta
+كَلْبٌ {N m sg} [kalbun] = pies
+كِلَابٌ {N m pl} [kilābun] = psy
+بَيْتٌ {N m sg} [baytun] = dom
+اِمْرَأَةٌ {N f sg} [imraʾatun] = kobieta
 
-كَتَبَ {V} = pisal; napisac
-كَانَ {V irreg} = byl; byc
-رَأَى {V irreg} = widziec
+كَتَبَ {V} [kataba] = pisał; napisać
+كَانَ {V irreg} [kāna] = był; być
+رَأَى {V irreg} [raʾā] = widzieć
 
-كَبِيرٌ {Adj} = duzy; wielki
-صَغِيرٌ {Adj} = maly
+كَبِيرٌ {Adj} [kabīrun] = duży; wielki
+صَغِيرٌ {Adj} [ṣaġīrun] = mały
 ```
-
-Transcription examples: `kalbun`, `kilābun`, `baytun`, `imraʾatun`, `kataba`, `kāna`, `raʾā`, `kabīrun`, `ṣaġīrun`.
 
 ## Grammar notes (B1+)
 

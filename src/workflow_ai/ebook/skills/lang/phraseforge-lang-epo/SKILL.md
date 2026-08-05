@@ -22,7 +22,7 @@ Not needed. Esperanto uses Latin script with a circumflex supersign: `ĉ ĝ ĥ �
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Esperanto-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Esperanto-specific rules:
 
 - **Gender:** grammatically genderless by default; feminine marked by suffix `-ino`. Use `{N}` for default nouns; `{N f}` for explicitly feminine forms (with `-ino`).
 - **Systematic word endings:** `-o` (noun), `-a` (adjective), `-e` (adverb), `-i` (verb infinitive). All regular: no irregular conjugation, no irregular plural (always `-j`), no irregular accusative (always `-n`).
@@ -35,12 +35,12 @@ domo {N} = dom
 virino {N f} = kobieta
 infano {N} = dziecko
 
-paroli {V} = mowic
-vidi {V} = widziec
-esti {V} = byc
-havi {V} = miec
+paroli {V} = mówić
+vidi {V} = widzieć
+esti {V} = być
+havi {V} = mieć
 
-malgranda {Adj} = maly
+malgranda {Adj} = mały
 rapide {Adv} = szybko
 ```
 

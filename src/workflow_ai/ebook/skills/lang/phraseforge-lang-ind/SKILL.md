@@ -22,7 +22,7 @@ Not needed. Indonesian uses Latin script. No special characters beyond standard 
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Indonesian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Indonesian-specific rules:
 
 - **No grammatical gender, no articles, no case inflection.** All nouns take `{N}`. Plural is formed by reduplication (`anjing-anjing` = dogs) — note it only when explicitly in the source.
 - **Verbs:** base (root) form or the prefixed active form (`me-` prefix family). Tag `{V}`. Add `irreg` for irregular.
@@ -34,14 +34,14 @@ rumah {N} = dom
 perempuan {N} = kobieta
 anak {N} = dziecko
 
-berbicara {V} = mowic; rozmawiac
-melihat {V} = widziec
-adalah {V} = byc (kopula)
-ada {V} = byc; istniec
-mempunyai {V} = miec; posiadac
+berbicara {V} = mówić; rozmawiać
+melihat {V} = widzieć
+adalah {V} = być (kopula)
+ada {V} = być; istnieć
+mempunyai {V} = mieć; posiadać
 
-kecil {Adj} = maly
-cepat {Adv} = szybko; predko
+kecil {Adj} = mały
+cepat {Adv} = szybko; prędko
 ```
 
 ## Grammar notes (B1+)

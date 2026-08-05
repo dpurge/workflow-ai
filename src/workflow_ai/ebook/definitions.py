@@ -5,7 +5,7 @@
                target-language searches), render_chapter (assemble + render the
                chapter and wire it into ebook.yml)
   - routers:   branch_on_kind (generic / lang-from-source / lang-from-topic),
-               branch_on_script (skip transcription for latn/cyrl/grek/kore)
+               branch_on_script (skip transcription for latn/cyrl/grek only)
   - updaters:  store_clean, store_detect (keeps detect output off the book's
                authoritative language/script keys), store_compose (composed text)
   - verifiers: ebook_ready, detect_ok, queries_min, evidence_min, ground_check
@@ -27,7 +27,6 @@ from typing import Any
 
 import yaml
 
-from ..backends.base import AgentOutputError
 from ..models import VerifyResult, WorkflowContext
 from ..registry import action, router, schema, skill_resolver, updater, verifier
 from . import render as render_mod
@@ -41,7 +40,10 @@ schema("questions_out")(QuestionList)
 schema("queries_out")(QueriesOut)
 schema("compose_out")(ComposeOut)
 
-TRANSLITERATED = {"latn", "cyrl", "grek", "kore"}  # scripts that need NO transcription
+# Scripts routed straight to translation (no transcribe node). Korean (kore) is
+# NOT here: the kor skill requires Revised-Romanization transcription, so Hangul
+# must go through transcribe (lesson-transcription-rules FR-T5).
+NO_TRANSCRIPTION_SCRIPTS = {"latn", "cyrl", "grek"}
 MAX_SOURCE_CHARS = 2500
 
 # Compose-from-topic path (kind=lang, --prompt topic, no --source).
@@ -166,29 +168,12 @@ def fetch_source(context: WorkflowContext) -> dict[str, Any]:
         raise ValueError("no source_ref provided (expected {'kind','value'})")
 
     if kind == "url":
-        import httpx
+        import urllib.request
 
-        try:
-            with httpx.Client(
-                timeout=httpx.Timeout(30.0, connect=10.0),
-                follow_redirects=True,
-                transport=httpx.HTTPTransport(local_address="0.0.0.0"),
-            ) as client:
-                resp = client.get(
-                    value,
-                    headers={
-                        "User-Agent": (
-                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                            "AppleWebKit/537.36 (KHTML, like Gecko) "
-                            "Chrome/125.0.0.0 Safari/537.36"
-                        ),
-                    },
-                )
-                resp.raise_for_status()
-                ctype = resp.headers.get("content-type", "")
-                raw = resp.text
-        except httpx.HTTPError as exc:
-            raise AgentOutputError(f"fetch_source: could not fetch {value}: {exc}") from exc
+        req = urllib.request.Request(value, headers={"User-Agent": "workflow-ai/0.1"})
+        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (user-provided URL)
+            ctype = resp.headers.get("content-type", "")
+            raw = resp.read().decode("utf-8", errors="replace")
         is_html = "text/html" in ctype.lower() or bool(re.search(r"<\/?[a-z][\s\S]*>", raw, re.I))
     else:
         raw = Path(value).read_text(encoding="utf-8")
@@ -426,7 +411,7 @@ def branch_on_script(output: Any, context: WorkflowContext) -> list[str]:
     """Skip transcription for scripts that don't need it. Routes on the TARGET
     script (from --script), which store_detect deliberately does not overwrite."""
     script = (context.data.get("script") or "").lower()
-    return ["translate"] if script in TRANSLITERATED else ["transcribe"]
+    return ["translate"] if script in NO_TRANSCRIPTION_SCRIPTS else ["transcribe"]
 
 
 # --- verifiers -------------------------------------------------------------

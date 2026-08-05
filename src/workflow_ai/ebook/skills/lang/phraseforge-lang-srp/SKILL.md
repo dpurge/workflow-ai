@@ -22,7 +22,7 @@ Not required by default (Cyrillic excluded from transcription block). Serbian al
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Serbian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Serbian-specific rules:
 
 - **Nouns:** no articles; mark gender and animate/inanimate: `{N m an}`, `{N m in}`, `{N f}`, `{N n}`.
 - **Verbs:** infinitive form. Mark aspect: `{V impf}` / `{V pf}`. Add `irreg` for irregular.
@@ -34,12 +34,12 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Serbian-spec
 жена {N f} = kobieta
 дете {N n} = dziecko
 
-говорити {V impf} = mowic
-видети {V pf} = zobaczyc
-бити {V irreg} = byc
-имати {V irreg} = miec
+говорити {V impf} = mówić
+видети {V pf} = zobaczyć
+бити {V irreg} = być
+имати {V irreg} = mieć
 
-мали {Adj} = maly
+мали {Adj} = mały
 брзо {Adv} = szybko
 ```
 

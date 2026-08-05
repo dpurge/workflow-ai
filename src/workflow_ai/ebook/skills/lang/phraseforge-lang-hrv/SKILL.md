@@ -22,7 +22,7 @@ Not needed. Croatian uses Latin script. Preserve diacritics: `č c d s z` with c
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Croatian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Croatian-specific rules:
 
 - **Nouns:** no articles; mark gender and animate/inanimate for masculines: `{N m an}`, `{N m in}`, `{N f}`, `{N n}`.
 - **Verbs:** infinitive form. Mark aspect: `{V impf}` / `{V pf}`. Add `irreg` for irregular.

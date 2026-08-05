@@ -22,7 +22,7 @@ Not needed. German uses Latin script. Render `ä`, `ö`, `ü`, `ß` as-is; do **
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. German-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. German-specific rules:
 
 - **Nouns:** include the **definite article** in the headword, mark gender and number. Use `{N m}` / `{N f}` / `{N n}` for singular dictionary entries; add `pl` only when listing the plural form separately.
 - **Verbs:** bare infinitive (no `zu`), tag `{V}`. Separable verbs: `{V sep}`. Reflexive: `{V refl}`.

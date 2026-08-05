@@ -22,24 +22,24 @@ Not needed. Czech uses Latin script. Preserve diacritics: `á c d e é i n o r s
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Czech-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Czech-specific rules:
 
 - **Nouns:** no articles; mark gender and animate/inanimate for masculines: `{N m an}` (masculine animate), `{N m in}` (masculine inanimate), `{N f}`, `{N n}`.
-- **Verbs:** infinitive form. Czech verbs have **aspect pairs** (imperfective/perfective); list both when relevant: `delat {V impf}` / `udelat {V pf}`. Tag `irreg` if irregular.
+- **Verbs:** infinitive form. Czech verbs have **aspect pairs** (imperfective/perfective); list both when relevant: `dělat {V impf}` / `udělat {V pf}`. Tag `irreg` if irregular.
 - **Adjectives:** masculine singular nominative, tag `{Adj}`.
 
 ```
 pes {N m an} = pies
-dum {N m in} = dom
-zena {N f} = kobieta
-mesto {N n} = miasto
+dům {N m in} = dom
+žena {N f} = kobieta
+město {N n} = miasto
 
-mluvit {V impf} = mowic
-videt {V impf irreg} = widziec
-byt {V irreg} = byc
-mit {V irreg} = miec
+mluvit {V impf} = mówić
+vidět {V impf irreg} = widzieć
+být {V irreg} = być
+mít {V irreg} = mieć
 
-maly {Adj} = maly
+malý {Adj} = mały
 rychle {Adv} = szybko
 ```
 

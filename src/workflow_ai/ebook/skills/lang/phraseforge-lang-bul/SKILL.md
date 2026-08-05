@@ -22,7 +22,7 @@ Not required by default (Cyrillic excluded from transcription block).
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Bulgarian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Bulgarian-specific rules:
 
 - **Nouns:** Bulgarian has **lost case inflection** (like Romanian and Macedonian among Slavic languages) but retains gender and a **postpositional definite article** (suffixed). Use the indefinite (bare) form as headword; mark gender: `{N m}` / `{N f}` / `{N n}`.
 - **Verbs:** first-person singular present as headword (dictionary form). Tag `{V}`. Mark aspect: `{V impf}` / `{V pf}`. Add `irreg` for irregular.
@@ -34,12 +34,12 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Bulgarian-sp
 жена {N f} = kobieta
 дете {N n} = dziecko
 
-говоря {V impf} = mowic
-видя {V pf} = zobaczyc
-съм {V irreg} = byc
-имам {V irreg} = miec
+говоря {V impf} = mówić
+видя {V pf} = zobaczyć
+съм {V irreg} = być
+имам {V irreg} = mieć
 
-малък {Adj} = maly
+малък {Adj} = mały
 бързо {Adv} = szybko
 ```
 

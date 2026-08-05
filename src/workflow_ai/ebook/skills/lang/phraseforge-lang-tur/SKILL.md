@@ -22,25 +22,25 @@ Not needed. Turkish uses Latin script (reformed 1928). Preserve special characte
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Turkish-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Turkish-specific rules:
 
 - **No grammatical gender, no articles.** All nouns take `{N}`. Mark plural when it appears in the source (suffix varies by vowel harmony: `-lar`/`-ler`).
 - **Verbs:** infinitive form (ending `-mak`/`-mek`). Tag `{V}`. Add `irreg` for irregular.
 - **Adjectives:** uninflected form, tag `{Adj}`.
 
 ```
-kopek {N} = pies
+köpek {N} = pies
 ev {N} = dom
-kadin {N} = kobieta
-cocuk {N} = dziecko
+kadın {N} = kobieta
+çocuk {N} = dziecko
 
-konusmak {V} = mowic
-gormek {V} = widziec
-olmak {V} = byc
-sahip olmak {V} = miec
+konuşmak {V} = mówić
+görmek {V} = widzieć
+olmak {V} = być
+sahip olmak {V} = mieć
 
-kucuk {Adj} = maly
-hizli {Adv} = szybko
+küçük {Adj} = mały
+hızlı {Adv} = szybko
 ```
 
 (Actual headwords with Turkish characters: `köpek`, `ev`, `kadın`, `çocuk`, `konuşmak`, `görmek`, `olmak`, `küçük`, `hızlı`.)

@@ -22,7 +22,7 @@ Not required. Greek script is excluded from transcription block per `phraseforge
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Ancient Greek-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Ancient Greek-specific rules:
 
 - **Nouns:** include the **definite article** (ὁ/m, ἡ/f, τό/n) and the genitive ending as headword — standard dictionary format: `λόγος, -ου, ὁ`. Mark gender: `{N m}` / `{N f}` / `{N n}`. Add declension: `{N m 2}` (2nd), `{N f 1}` (1st), `{N m 3}` (3rd), etc.
 - **Verbs:** first-person singular present active indicative (1pp). Tag `{V}`. Note the conjugation class when useful (thematic / athematic / contract).
@@ -34,12 +34,12 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Ancient Gree
 ἡ γυνή, γυναικός {N f 3 irreg} = kobieta
 τὸ παιδίον, -ου {N n 2} = dziecko
 
-λέγω {V} = mowic
-ὁράω {V contract} = widziec
-εἰμί {V irreg} = byc
-ἔχω {V} = miec
+λέγω {V} = mówić
+ὁράω {V contract} = widzieć
+εἰμί {V irreg} = być
+ἔχω {V} = mieć
 
-μικρός {Adj} = maly
+μικρός {Adj} = mały
 ταχέως {Adv} = szybko
 ```
 

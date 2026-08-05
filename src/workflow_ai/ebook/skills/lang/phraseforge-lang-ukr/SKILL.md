@@ -22,7 +22,7 @@ Not required by default (Cyrillic excluded from transcription block). Phonetic h
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Ukrainian-specific rules:
+Field rules follow the injected **phraseforge-entry-format** skill. Ukrainian-specific rules:
 
 - **Nouns:** no articles; mark gender: `{N m}` / `{N f}` / `{N n}`. Add `an` for animate masculines: `{N m an}`.
 - **Verbs:** infinitive form. Mark aspect: `{V impf}` / `{V pf}`. Add `irreg` for irregular.
@@ -36,12 +36,12 @@ Headwords must be in Ukrainian Cyrillic: includes letters `і`, `ї`, `є`, `ґ`
 жінка {N f} = kobieta
 дитина {N f} = dziecko
 
-говорити {V impf} = mowic
-побачити {V pf} = zobaczyc
-бути {V irreg} = byc
-мати {V irreg} = miec
+говорити {V impf} = mówić
+побачити {V pf} = zobaczyć
+бути {V irreg} = być
+мати {V irreg} = mieć
 
-маленький {Adj} = maly
+маленький {Adj} = mały
 швидко {Adv} = szybko
 ```
 

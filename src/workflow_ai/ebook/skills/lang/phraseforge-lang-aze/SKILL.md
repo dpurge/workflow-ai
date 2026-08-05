@@ -24,7 +24,7 @@ Not needed. Azerbaijani uses Latin script. Preserve: `ç ğ ı İ ö ş ü ə`.
 
 ## Vocabulary format
 
-Tag conventions follow `phraseforge-core/references/vocabulary.md`. Azerbaijani-specific rules closely follow Turkish (the two languages are closely related):
+Field rules follow the injected **phraseforge-entry-format** skill. Azerbaijani-specific rules closely follow Turkish (the two languages are closely related):
 
 - **No grammatical gender, no articles.** All nouns take `{N}`.
 - **Verbs:** infinitive (ending `-maq`/`-mək`). Tag `{V}`. Add `irreg` for irregular.
@@ -33,15 +33,15 @@ Tag conventions follow `phraseforge-core/references/vocabulary.md`. Azerbaijani-
 ```
 it {N} = pies
 ev {N} = dom
-qadin {N} = kobieta
-usaq {N} = dziecko
+qadın {N} = kobieta
+uşaq {N} = dziecko
 
-danismaq {V} = mowic
-gormek {V} = widziec
-olmaq {V} = byc
-sahib olmaq {V} = miec
+danışmaq {V} = mówić
+görmək {V} = widzieć
+olmaq {V} = być
+sahib olmaq {V} = mieć
 
-kicik {Adj} = maly
+kiçik {Adj} = mały
 tez {Adv} = szybko
 ```
 
