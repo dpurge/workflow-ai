@@ -4,7 +4,7 @@ description: Modern Standard Arabic (al-arabiyya al-fusha, ISO 639-3 arb) langua
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -108,20 +108,22 @@ Field rules follow the injected **phraseforge-entry-format** skill. Arabic-speci
 - **Nouns:** mark gender: `{N m}` / `{N f}`. For paradigm pairs (singular + broken plural), list both with `sg`/`pl`: `{N m sg}` / `{N m pl}`.
 - **Verbs:** third-person masculine singular perfect (dictionary form). Tag `{V}`.
 - **Adjectives:** masculine singular indefinite, tag `{Adj}`.
-- Short vowels (harakat) should be included in headwords for learners at A1–B1.
+- Short vowels (harakat) should be included in dictionary/citation forms for learners at A1–B1.
+- **Important for `transcription`: drop case endings / tanwīn by default** in vocabulary and models, even when the Arabic phrase itself is written with final nunation for learner clarity. Use the paused/native reading: `مَجَرَّةٌ` → `maǧarra`, `كَلْبٌ` → `kalb`, `كَبِيرٌ` → `kabīr`. Keep a final `-an` only for genuinely read adverbial accusatives such as `شكراً` → `šukran`, per the transcription rules above.
 
 ```
-كَلْبٌ {N m sg} [kalbun] = pies
-كِلَابٌ {N m pl} [kilābun] = psy
-بَيْتٌ {N m sg} [baytun] = dom
-اِمْرَأَةٌ {N f sg} [imraʾatun] = kobieta
+كَلْبٌ {N m sg} [kalb] = pies
+كِلَابٌ {N m pl} [kilāb] = psy
+بَيْتٌ {N m sg} [bayt] = dom
+اِمْرَأَةٌ {N f sg} [imraʾa] = kobieta
+مَجَرَّةٌ {N f sg} [maǧarra] = galaktyka
 
 كَتَبَ {V} [kataba] = pisał; napisać
 كَانَ {V irreg} [kāna] = był; być
 رَأَى {V irreg} [raʾā] = widzieć
 
-كَبِيرٌ {Adj} [kabīrun] = duży; wielki
-صَغِيرٌ {Adj} [ṣaġīrun] = mały
+كَبِيرٌ {Adj} [kabīr] = duży; wielki
+صَغِيرٌ {Adj} [ṣaġīr] = mały
 ```
 
 ## Grammar notes (B1+)

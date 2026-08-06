@@ -14,13 +14,13 @@ description: Canonical field rules for the vocabulary and models entries a Phras
 Each vocabulary entry is a JSON object:
 
 ```json
-{"headword": "...", "grammar": "...", "transcription": "...", "translation": "...", "notes": null}
+{"phrase": "...", "grammar": "...", "transcription": "...", "translation": "...", "notes": null}
 ```
 
-Each models entry is the same minus `grammar`, with `pattern` instead of `headword`:
+Each models entry is the same minus `grammar`:
 
 ```json
-{"pattern": "...", "translation": "...", "transcription": "...", "notes": null}
+{"phrase": "...", "translation": "...", "transcription": "...", "notes": null}
 ```
 
 ## `grammar` — tag CONTENT ONLY, no braces
@@ -28,8 +28,8 @@ Each models entry is the same minus `grammar`, with `pattern` instead of `headwo
 Space-separated tokens (POS first, then optional modifiers). **Never** include curly
 braces — the renderer adds them. Omit (null) if unsure.
 
-- ✅ GOOD: `{"headword": "发布", "grammar": "V", ...}`
-- ✅ GOOD: `{"headword": "der Hund", "grammar": "N m sg", ...}`
+- ✅ GOOD: `{"phrase": "发布", "grammar": "V", ...}`
+- ✅ GOOD: `{"phrase": "der Hund", "grammar": "N m sg", ...}`
 - ❌ BAD (braces in the field → renders as `{{V}}`): `{"grammar": "{V}", ...}`
 - ❌ BAD (double braces): `{"grammar": "{{V}}", ...}`
 
@@ -40,9 +40,9 @@ carry its own `transcription`. Never leave it null for those scripts; never coll
 the transcriptions into a separate list or a trailing line. Use the romanization
 system the language skill specifies. For Latin/Cyrillic/Greek scripts, leave it null.
 
-- ✅ GOOD (hans): `{"headword": "发布", "transcription": "fābù", "translation": "publikować"}`
-- ❌ BAD (missing transcription on a hans entry): `{"headword": "发布", "transcription": null, ...}`
-- ✅ GOOD (Latin, none needed): `{"headword": "laufen", "transcription": null, ...}`
+- ✅ GOOD (hans): `{"phrase": "发布", "transcription": "fābù", "translation": "publikować"}`
+- ❌ BAD (missing transcription on a hans entry): `{"phrase": "发布", "transcription": null, ...}`
+- ✅ GOOD (Latin, none needed): `{"phrase": "laufen", "transcription": null, ...}`
 
 ## `notes` — almost always null
 
@@ -51,9 +51,16 @@ entry is genuinely ambiguous or hard to understand without it — a false friend
 non-obvious sense/usage, or an easily-confused homograph. Do **not** add level tags
 (HSK…), literal glosses, or general commentary; unnecessary notes clutter the lesson.
 
-- ✅ GOOD (ordinary word, no note): `{"headword": "地址", "transcription": "dìzhǐ", "translation": "adres", "notes": null}`
-- ✅ GOOD (note earns its place): `{"headword": "克星", "transcription": "kèxīng", "translation": "pogromca", "notes": "dosł. „gwiazda zguby”; w nazwach = narzędzie do zwalczania czegoś"}`
-- ❌ BAD (needless note on an easy word — everything else here is correct): `{"headword": "地址", "grammar": "N", "transcription": "dìzhǐ", "translation": "adres", "notes": "rzeczownik oznaczający adres"}`
+**Important:** any parenthetical clarification that should render at the **end of the final
+lesson line** belongs in `notes`, **not inside `translation`**. The renderer appends `notes`
+as the final ` (...)` suffix. Therefore `translation` itself should stay parenthesis-free
+unless the literal parentheses are genuinely part of the gloss.
+
+- ✅ GOOD (ordinary word, no note): `{"phrase": "地址", "transcription": "dìzhǐ", "translation": "adres", "notes": null}`
+- ✅ GOOD (note earns its place): `{"phrase": "克星", "transcription": "kèxīng", "translation": "pogromca", "notes": "dosł. „gwiazda zguby”; w nazwach = narzędzie do zwalczania czegoś"}`
+- ✅ GOOD (qualifier belongs at line end, so keep it in `notes`): `{"phrase": "عَالَ", "grammar": "V", "transcription": "ʿāla", "translation": "utrzymywać; żywić", "notes": "rodzinę"}`
+- ❌ BAD (parenthetical qualifier buried inside `translation`): `{"phrase": "عَالَ", "grammar": "V", "transcription": "ʿāla", "translation": "utrzymywać (rodzinę); żywić", "notes": null}`
+- ❌ BAD (needless note on an easy word — everything else here is correct): `{"phrase": "地址", "grammar": "N", "transcription": "dìzhǐ", "translation": "adres", "notes": "rzeczownik oznaczający adres"}`
 
 ## `translation`
 
@@ -61,9 +68,14 @@ Gloss in the reader's language. Join multiple senses with `; ` (semicolon + spac
 e.g. `"polecać; rekomendować"`. Write it in that language's FULL native orthography: keep EVERY
 diacritic and never ASCII-strip or substitute plain letters.
 
-- ✅ GOOD (Polish, diacritics intact): `{"headword": "书", "transcription": "shū", "translation": "książka"}`
-- ❌ BAD (diacritics stripped): `{"headword": "书", "transcription": "shū", "translation": "ksiazka"}`
+Keep `translation` as the **main gloss text only**. If you need a clarifying parenthetical that
+should appear at the very end of the rendered line, put that content in `notes` instead.
+
+- ✅ GOOD (Polish, diacritics intact): `{"phrase": "书", "transcription": "shū", "translation": "książka"}`
+- ✅ GOOD (multiple senses, line-end qualifier kept in `notes`): `{"phrase": "عَالَ", "transcription": "ʿāla", "translation": "utrzymywać; żywić", "notes": "rodzinę"}`
+- ❌ BAD (diacritics stripped): `{"phrase": "书", "transcription": "shū", "translation": "ksiazka"}`
+- ❌ BAD (line-end note embedded into one sense): `{"phrase": "عَالَ", "transcription": "ʿāla", "translation": "utrzymywać (rodzinę); żywić", "notes": null}`
 
 The per-language skill (`phraseforge-lang-<iso>`) adds language-specific rules
-(headword shape, the exact tag set, the transcription system and its typography).
+(phrase shape, the exact tag set, the transcription system and its typography).
 When this skill and the language skill overlap, the language skill wins on specifics.

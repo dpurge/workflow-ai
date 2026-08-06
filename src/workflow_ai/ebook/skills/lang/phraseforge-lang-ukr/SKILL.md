@@ -4,7 +4,7 @@ description: Ukrainian (Ukrainska, ISO 639-3 ukr) language conventions for Phras
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -28,7 +28,7 @@ Field rules follow the injected **phraseforge-entry-format** skill. Ukrainian-sp
 - **Verbs:** infinitive form. Mark aspect: `{V impf}` / `{V pf}`. Add `irreg` for irregular.
 - **Adjectives:** masculine singular nominative long form, tag `{Adj}`.
 
-Headwords must be in Ukrainian Cyrillic: includes letters `і`, `ї`, `є`, `ґ` absent from Russian.
+Dictionary/citation forms must be in Ukrainian Cyrillic: includes letters `і`, `ї`, `є`, `ґ` absent from Russian.
 
 ```
 собака {N f} = pies

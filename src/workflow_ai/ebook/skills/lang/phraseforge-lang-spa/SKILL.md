@@ -4,7 +4,7 @@ description: Spanish (Español, ISO 639-3 spa) language conventions for PhraseFo
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -24,7 +24,7 @@ Not needed. Spanish uses Latin script. Render `ñ`, accented vowels (`á é í �
 
 Field rules follow the injected **phraseforge-entry-format** skill. Spanish-specific rules:
 
-- **Nouns:** include the **definite article** in the headword, mark gender. Use `{N m}` / `{N f}` for singular dictionary entries; add `pl` only when listing the plural form separately.
+- **Nouns:** include the **definite article** in the dictionary/citation form, and mark gender. Use `{N m}` / `{N f}` for singular dictionary entries; add `pl` only when listing the plural form separately.
 - **Verbs:** infinitive form. Optionally tag with verb class: `{V ar}`, `{V er}`, `{V ir}`. Irregular or stem-changing: add `irreg` (`{V ar irreg}`).
 - **Adjectives:** masculine singular form (standard dictionary form), tag `{Adj}`.
 

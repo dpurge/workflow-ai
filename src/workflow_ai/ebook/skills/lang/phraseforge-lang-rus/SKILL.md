@@ -4,7 +4,7 @@ description: Russian (Russkiy, ISO 639-3 rus) language conventions for PhraseFor
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -43,7 +43,7 @@ malenkiy {Adj} = mały
 bystro {Adv} = szybko
 ```
 
-(Write headwords in Cyrillic: `собака`, `дом`, `женщина`, `ребёнок`, `говорить`, `увидеть`, `быть`, `иметь`, `маленький`, `быстро`.)
+(Write dictionary/citation forms in Cyrillic: `собака`, `дом`, `женщина`, `ребёнок`, `говорить`, `увидеть`, `быть`, `иметь`, `маленький`, `быстро`.)
 
 ## Declension tables (B1+)
 

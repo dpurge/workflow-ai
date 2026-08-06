@@ -4,7 +4,7 @@ description: Modern Greek (Neoelliniki, ISO 639-3 ell) language conventions for 
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -24,7 +24,7 @@ Not required. Greek script is excluded from transcription block per `phraseforge
 
 Field rules follow the injected **phraseforge-entry-format** skill. Modern Greek-specific rules:
 
-- **Nouns:** include the **definite article** (`ο`/`m`, `η`/`f`, `το`/`n`) in the headword. Mark gender: `{N m}` / `{N f}` / `{N n}`.
+- **Nouns:** include the **definite article** (`ο`/`m`, `η`/`f`, `το`/`n`) in the dictionary/citation form. Mark gender: `{N m}` / `{N f}` / `{N n}`.
 - **Verbs:** first-person singular present (dictionary form). Tag `{V}`. Two conjugation classes: `-ω` (type A) and `-άω`/`-ώ` (type B): `{V A}` / `{V B}`. Add `irreg` for irregular.
 - **Adjectives:** masculine singular nominative, tag `{Adj}`.
 

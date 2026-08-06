@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, RootModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class DetectOut(BaseModel):
@@ -34,7 +34,9 @@ class DetectOut(BaseModel):
 
 
 class VocabularyEntry(BaseModel):
-    headword: str = Field(description="The foreign headword in dictionary form.")
+    phrase: str = Field(
+        description="The foreign word or phrase in dictionary/citation form."
+    )
     grammar: str | None = Field(
         default=None,
         description=(
@@ -47,7 +49,7 @@ class VocabularyEntry(BaseModel):
     transcription: str | None = Field(
         default=None,
         description=(
-            "Romanization of the headword. REQUIRED for non-Latin scripts (arab, hans, jpan, "
+            "Romanization of the phrase. REQUIRED for non-Latin scripts (arab, hans, jpan, "
             "kore, hebr, …): fill it for EVERY entry, never omit it, never move it to a separate "
             "list — it belongs inline on each entry. Use the romanization system the language "
             "skill specifies. Leave null ONLY for Latin/Cyrillic/Greek scripts."
@@ -58,7 +60,10 @@ class VocabularyEntry(BaseModel):
         description=(
             "Gloss in the reader's language. Join multiple senses with '; '. Write it in that "
             "language's FULL native orthography — keep EVERY diacritic (Polish ą ę ć ł ń ó ś ź ż, "
-            "etc.); never ASCII-strip or substitute plain letters (książka, not ksiazka)."
+            "etc.); never ASCII-strip or substitute plain letters (książka, not ksiazka). Keep "
+            "this field as the main gloss text only: if you need a parenthetical clarification "
+            "that should appear at the very END of the rendered lesson line, put that content in "
+            "`notes`, not inside `translation`."
         ),
     )
     notes: str | None = Field(
@@ -67,26 +72,31 @@ class VocabularyEntry(BaseModel):
             "Leave null for almost every entry. Add a SHORT note ONLY when the entry is genuinely "
             "ambiguous or hard to understand without it (false friend, non-obvious sense or usage, "
             "easily-confused homograph). Do NOT add HSK/level tags, literal glosses, or general "
-            "'helpful' commentary — unnecessary notes make the lesson harder to read."
+            "'helpful' commentary — unnecessary notes make the lesson harder to read. Any "
+            "parenthetical clarification that should render as the FINAL `(...)` at the end of "
+            "the lesson line belongs here, not inside `translation`."
         ),
     )
 
 
 class ModelEntry(BaseModel):
-    pattern: str = Field(
-        description="The foreign phrase or pattern (built progressively toward a full sentence)."
+    phrase: str = Field(
+        description="The foreign phrase (built progressively toward a full sentence)."
     )
     translation: str = Field(
         description=(
             "Gloss in the reader's language. Join multiple senses with '; '. Write it in that "
             "language's FULL native orthography — keep EVERY diacritic (Polish ą ę ć ł ń ó ś ź ż, "
-            "etc.); never ASCII-strip or substitute plain letters (książka, not ksiazka)."
+            "etc.); never ASCII-strip or substitute plain letters (książka, not ksiazka). Keep "
+            "this field as the main gloss text only: if you need a parenthetical clarification "
+            "that should appear at the very END of the rendered lesson line, put that content in "
+            "`notes`, not inside `translation`."
         )
     )
     transcription: str | None = Field(
         default=None,
         description=(
-            "Romanization of the pattern. REQUIRED for non-Latin scripts (arab, hans, jpan, kore, "
+            "Romanization of the phrase. REQUIRED for non-Latin scripts (arab, hans, jpan, kore, "
             "hebr, …): fill it inline for EVERY entry, never omit. Use the language skill's system. "
             "Leave null ONLY for Latin/Cyrillic/Greek scripts."
         ),
@@ -95,21 +105,62 @@ class ModelEntry(BaseModel):
         default=None,
         description=(
             "Leave null for almost every entry. Add a short note ONLY when genuinely needed for "
-            "comprehension — no literal glosses or filler."
+            "comprehension — no literal glosses or filler. Any parenthetical clarification that "
+            "should render as the FINAL `(...)` at the end of the lesson line belongs here, not "
+            "inside `translation`."
         ),
     )
 
 
-class VocabularyList(RootModel[list[VocabularyEntry]]):
-    pass
+class VocabularyList(BaseModel):
+    entries: list[VocabularyEntry] = Field(
+        description="Vocabulary entries extracted from the lesson text."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_root_list(cls, data):
+        if isinstance(data, list):
+            return {"entries": data}
+        if isinstance(data, dict) and isinstance(data.get("entries"), list):
+            coerced = []
+            for entry in data["entries"]:
+                if isinstance(entry, dict) and "phrase" not in entry and "headword" in entry:
+                    entry = {**entry, "phrase": entry["headword"]}
+                coerced.append(entry)
+            return {**data, "entries": coerced}
+        return data
 
 
-class ModelList(RootModel[list[ModelEntry]]):
-    pass
+class ModelList(BaseModel):
+    entries: list[ModelEntry] = Field(
+        description="Model phrase entries built from the lesson text."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_root_list(cls, data):
+        if isinstance(data, list):
+            return {"entries": data}
+        if isinstance(data, dict) and isinstance(data.get("entries"), list):
+            coerced = []
+            for entry in data["entries"]:
+                if isinstance(entry, dict) and "phrase" not in entry and "pattern" in entry:
+                    entry = {**entry, "phrase": entry["pattern"]}
+                coerced.append(entry)
+            return {**data, "entries": coerced}
+        return data
 
 
-class QuestionList(RootModel[list[str]]):
-    pass
+class QuestionList(BaseModel):
+    entries: list[str] = Field(
+        description="Short open-ended comprehension questions in the lesson language."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_root_list(cls, data):
+        return {"entries": data} if isinstance(data, list) else data
 
 
 # --- compose-from-topic path -----------------------------------------------

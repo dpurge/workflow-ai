@@ -8,6 +8,25 @@ Each node runs the agent in a **fresh context** (no shared history), produces
 **workflow context**, and chooses its **next state(s)** from a declared, described
 set — so control flow belongs to the framework, not the model.
 
+## Quick navigation
+
+- **Just run it**
+  - [Install](#install)
+  - [Usage — common cases](#usage--common-cases)
+  - [OpenRouter](#openrouter)
+  - [Config file](#config-file)
+- **Choose models**
+  - [Set your backend + model once](#set-your-backend--model-once-recommended)
+  - [Per-step models in `workflow.yaml`](#per-step-models-in-workflowyaml)
+  - [Run options (both workflows)](#run-options-both-workflows)
+- **Understand the system**
+  - [Concepts](#concepts)
+  - [Backends](#backends)
+  - [Layout](#layout)
+- **Extend it**
+  - [Script tools (`research/tools/`)](#script-tools-researchtools)
+  - [Adding a backend](#adding-a-backend)
+
 ## Concepts
 
 - **DAG** — one start node, internal nodes, one or more terminal nodes. Validated
@@ -256,6 +275,17 @@ A copy-paste cookbook. Commands use `uv run workflow-ai` (from a clone); with th
 tool installed, drop `uv run`. Every run writes `result.json` + per-branch context
 to `--out` (default `runs/latest`).
 
+#### Failure behavior
+
+| Mode | What happens on node failure after retries |
+|---|---|
+| default | run aborts immediately; command exits non-zero |
+| `--save-partial` | run stops at the failed branch, saves partial results/context to `--out`, then exits non-zero |
+
+`--save-partial` does **not** force the workflow to continue past a failed
+decision/router node or a failed required generation node. It only preserves the
+successful work completed before the failure.
+
 ### Set your backend + model once (recommended)
 
 Put defaults in `~/.config/workflow-ai/config.yaml` so you don't repeat
@@ -263,12 +293,107 @@ Put defaults in `~/.config/workflow-ai/config.yaml` so you don't repeat
 
 ```yaml
 backend: copilot            # anthropic | openai | copilot
-model: claude-sonnet-4.6    # a model your backend exposes
+model: claude-sonnet-4.6    # default run model; used when a node has no model:
 ```
 
 Then the examples below just work. Any flag still overrides the config per-run.
 (See [Backends](#backends) to pick a backend, and [OpenRouter](#openrouter) /
 [Local Ollama](#local-ollama) below for those.)
+
+#### Model-selection terms
+
+| Term | Meaning |
+|---|---|
+| **run model** | the model selected by CLI `--model`, or if omitted, by config `model:` / backend default |
+| **node model** | the `model:` field on one node in `workflow.yaml` |
+| **effective model** | the actual model used for one node after precedence is applied |
+
+### Per-step models in `workflow.yaml`
+
+You can assign a **different model to a specific workflow step** by adding
+`model:` to that node in `workflow.yaml`.
+
+#### How model selection works
+
+| Source | Scope | Priority |
+|---|---|---:|
+| CLI `--model ID` | whole run | 1 (highest) |
+| node `model:` in `workflow.yaml` | one node / one step | 2 |
+| config `model:` | whole run fallback | 3 |
+| backend constructor/default | last fallback when config and CLI omit `model` | 4 |
+
+#### Important rule
+
+If you want **different models per workflow step**, **do not pass `--model`**.
+That flag overrides all node-level `model:` settings for the whole run.
+
+#### Example
+
+```yaml
+nodes:
+  detect:
+    model: google/gemini-2.5-flash-lite
+    role: "Identify the language of the text. Return JSON only."
+    schema: detect_out
+    ...
+
+  transcribe:
+    model: zhipuai/glm-4.5
+    role: >
+      Transcribe the text into Latin script.
+    output_kind: text
+    ...
+
+  questions:
+    model: google/gemini-2.5-flash-lite
+    role: >
+      Write 3-6 short, open-ended comprehension questions.
+    schema: questions_out
+    ...
+```
+
+With that workflow, run it like this:
+
+```bash
+uv run workflow-ai run ebook \
+  --backend openai \
+  --api-base-url https://openrouter.ai/api/v1 \
+  --api-key "$OPENROUTER_API_KEY" \
+  --kind lang --lang deu --script latn \
+  --ebook-yml .../deu/ebook.yml \
+  --source article.txt
+```
+
+Notice: **no `--model` flag**. The node-specific `model:` values remain active.
+
+#### Recommended pattern
+
+1. Set a **cheap default model** in config (or rely on the backend default)
+2. Override only the **quality-critical nodes** in `workflow.yaml`
+3. Leave easier nodes on the cheap default
+
+Typical candidates for a stronger model:
+- `transcribe`
+- `vocabulary`
+- `models`
+- sometimes `compose`
+
+Typical candidates for a cheaper model:
+- `detect`
+- `clean`
+- `questions`
+- `plan_queries`
+
+#### OpenRouter note
+
+For OpenRouter, `model:` should be the same provider/model id you would pass to
+`--model`, for example:
+
+- `zhipuai/glm-4.5`
+- `google/gemini-2.5-flash-lite`
+- `meta-llama/llama-3.3-70b-instruct`
+
+Use the exact id OpenRouter expects for that model.
 
 ### `research` — topic → sourced Markdown report
 
@@ -286,6 +411,35 @@ uv run workflow-ai run research --prompt "History of the CAP theorem" --depth de
 `--kind lang` **requires** the learning target `--lang <iso639-3> --script <iso15924>`.
 The book's own `ebook.yml` `language`/`script` are the reader/translation side.
 
+#### Default lesson file layout
+
+When you omit `--chapter`, language lessons default to a level-based path:
+
+- `a1/001.md`
+- `a2/001.md`
+- `b1/001.md`
+- …
+
+Rules:
+- the level comes from `--level`
+- filenames use **3-digit numbering** (`001.md`, `002.md`, ...)
+- the chapter H1 is derived from the path as `# <level>-<stem>`
+  - e.g. `b1/001.md` → `# b1-001`
+- generic prose chapters keep the older flat numbering behavior
+
+#### Markdown structure in lesson text blocks
+
+For language lessons, source text / transcription / translation / grammar are
+rendered as Markdown blocks inside the chapter.
+
+Rules:
+- the chapter's own title is the **only H1**
+- if a generated source/transcription/translation/grammar block contains `# ...`,
+  it is shifted down to start at `## ...`
+- transcription is expected to preserve Markdown formatting such as headings,
+  `**bold**`, `_italic_`, lists, block quotes, and paragraph breaks while
+  romanizing only the visible text
+
 ```bash
 # 1) Lesson FROM a source (URL or local file) — learn from that exact text:
 uv run workflow-ai run ebook --kind lang --lang deu --script latn \
@@ -294,6 +448,8 @@ uv run workflow-ai run ebook --kind lang --lang deu --script latn \
 
 uv run workflow-ai run ebook --kind lang --lang deu --script latn \
   --ebook-yml .../deu/ebook.yml --source ./article.txt --level b1
+# default output path if --chapter is omitted: b1/001.md
+# chapter title inside the file: # b1-001
 
 # 2) Lesson COMPOSED from a topic (no --source) — evidence-grounded from ~24
 #    target-language web searches (≥5 s apart, so ~2–3 min):
@@ -318,11 +474,19 @@ uv run workflow-ai run ebook --kind lang --lang spa --script latn --no-wire \
 uv run workflow-ai run ebook --kind lang --lang ron --script latn \
   --ebook-yml .../ron/ebook.yml --level a2 --searches 30 \
   --translation-lang eng --prompt "Ordering food at a restaurant"
+
+# 6) Save partial outputs if a later node fails (for example, vocabulary):
+uv run workflow-ai run ebook --kind lang --lang arb --script arab \
+  --backend openai --api-base-url https://openrouter.ai/api/v1 \
+  --api-key "$OPENROUTER_API_KEY" \
+  --ebook-yml .../arb/ebook.yml --source article.txt \
+  --save-partial --out runs/ebook-partial
 ```
 
-Flags: `--chapter <rel-path>` (else the next numbered file), `--translation-lang`
-(else the book's `ebook.yml` language, else `pol`), `--form text|dialog`,
-`--searches N` (20–30), `--grounding/--no-grounding`, `--wire/--no-wire`.
+Flags: `--chapter <rel-path>` (else for `--kind lang`: `<level>/NNN.md`, e.g. `b1/001.md`),
+`--translation-lang` (else the book's `ebook.yml` language, else `pol`),
+`--form text|dialog`, `--searches N` (20–30), `--grounding/--no-grounding`,
+`--wire/--no-wire`, `--save-partial`.
 
 ### `ebook` — generic prose chapter (`--kind generic`)
 
@@ -452,7 +616,21 @@ docker run --rm \
 OpenRouter is OpenAI-compatible, so use `--backend openai` pointed at
 `https://openrouter.ai/api/v1`, your OpenRouter key, and a `provider/model`
 id (e.g. `anthropic/claude-sonnet-4-6`, `google/gemini-2.5-pro`,
-`meta-llama/llama-3.3-70b-instruct`). There are three ways to configure it:
+`meta-llama/llama-3.3-70b-instruct`).
+
+#### OpenRouter setup modes
+
+OpenRouter uses the same model-selection rules as every other OpenAI-compatible
+backend here:
+
+- CLI `--model` = one model for the whole run
+- config `model:` = default run model
+- node `model:` in `workflow.yaml` = per-step override
+
+> **Warning:** if you pass CLI `--model`, it overrides every node-level `model:`
+> in `workflow.yaml` for that run. See [Per-step models in `workflow.yaml`](#per-step-models-in-workflowyaml).
+
+There are three common ways to configure OpenRouter:
 
 **1. CLI flags** (per run):
 
@@ -569,6 +747,8 @@ it into `ebook.yml` `text`. **`--kind` is required** and must be `generic` or
 - **`--kind lang`** — a phraseforge language lesson rendered as a `{start-*}`-fenced
   Markdown chapter (vocabulary, models, source text, transcription, translation,
   questions, grammar — *no exercises*, the ebook format has none).
+  In the lesson JSON, both vocabulary entries and model entries use the field
+  name **`phrase`** for the foreign word/phrase in dictionary/citation form.
   **Requires `--lang <iso639-3> --script <iso15924>`** — the *learning target*
   (the foreign language being taught). This is separate from the book's own
   `ebook.yml` `language`/`script`, which is the **reader/prose** language and
@@ -586,8 +766,15 @@ it into `ebook.yml` `text`. **`--kind` is required** and must be `generic` or
 - **`--kind generic`** — a web-sourced prose chapter (uses the backend's
   `WebSearch`), written as `# H1` Markdown.
 
-The target chapter is `--chapter <rel-path>`, else the next numbered file (e.g.
-`.../03.md` → `.../04.md`).
+The target chapter is `--chapter <rel-path>`. If you omit it:
+
+- `--kind lang` defaults to `<level>/NNN.md` (e.g. `b1/001.md`) and the chapter
+  title becomes `# <level>-<stem>` (e.g. `# b1-001`)
+- `--kind generic` keeps the older flat numbering behavior (e.g. `03.md` → `04.md`)
+
+For language lessons, generated source/transcription/translation/grammar blocks
+preserve Markdown structure, but any embedded H1 is shifted down so the chapter's
+own title remains the only H1.
 
 ```bash
 # Language lesson from a given source (the @lang skills are bundled — no setup):
@@ -637,9 +824,17 @@ Create `~/.config/workflow-ai/config.yaml` to set persistent defaults. All
 fields are optional; a missing file is silently ignored. CLI flags always take
 precedence over config values.
 
+#### What each layer controls
+
+| Layer | Best use | Example |
+|---|---|---|
+| config file | stable run defaults | backend, API base URL, cheap default run model |
+| `workflow.yaml` node `model:` | per-step tuning | stronger model for `transcribe` |
+| CLI flags | temporary override | one-off `--model` or `--backend` |
+
 ```yaml
 backend: anthropic       # anthropic | openai | copilot
-model: null              # default model id
+model: null              # default model id (fallback for nodes without model:)
 api_base_url: null       # API base URL (e.g. http://localhost:11434 for Ollama)
 api_key: null            # API key for the target endpoint
 retries: 3               # per-node retry count
@@ -657,6 +852,41 @@ ebook:
   script: null           # learning target ISO 15924 (required for kind=lang; CLI --script overrides)
 ```
 
+#### Example: cheap default + one stronger step
+
+Config:
+
+```yaml
+backend: openai
+api_base_url: https://openrouter.ai/api/v1
+api_key: null
+model: google/gemini-2.5-flash-lite
+```
+
+Workflow node override:
+
+```yaml
+nodes:
+  transcribe:
+    model: zhipuai/glm-4.5
+    ...
+```
+
+Run:
+
+```bash
+uv run workflow-ai run ebook \
+  --api-key "$OPENROUTER_API_KEY" \
+  --kind lang --lang arb --script arab \
+  --ebook-yml .../arb/ebook.yml \
+  --source article.txt
+```
+
+Result:
+- most nodes use the **run model**: `google/gemini-2.5-flash-lite`
+- `transcribe` uses its **node model**: `zhipuai/glm-4.5`
+- if you add `--model something-else`, that becomes the **effective model** for every node
+
 ### Run options (both workflows)
 
 | Option | Meaning |
@@ -664,12 +894,13 @@ ebook:
 | `--backend anthropic\|openai\|copilot` | agent backend (required; or set in config file) |
 | `--api-base-url URL` | redirect to Ollama, OpenRouter, etc. (e.g. `http://localhost:11434/v1`) |
 | `--api-key KEY` | API key for the target endpoint; use `ollama` for local Ollama |
-| `--model ID` | model id to pass to the backend (omit to use the backend's default) |
+| `--model ID` | model id to pass to the backend for the whole run; **overrides node `model:` values**. Omit it if you want per-step models from `workflow.yaml`. |
 | `--default-header KEY:VALUE` | extra HTTP header (repeatable); e.g. `--default-header Authorization:Bearer tok` |
 | `--azure-endpoint URL` | Azure OpenAI resource endpoint (activates `AzureOpenAI` constructor) |
 | `--api-version VER` | Azure OpenAI API version (e.g. `2024-10-21`) |
 | `--retries N` | override per-node retry count (default 3) |
 | `--out DIR` | results directory |
+| `--save-partial` | on failure, save partial results/context to `--out` and still exit non-zero |
 | `--verbose` / `-v` | print node events and context snapshots to stdout as the run progresses |
 | `--log-file PATH` | write the same verbose output to a file (in addition to stdout when `--verbose`; file-only otherwise) |
 | `--kind generic\|lang` (required), `--lang`/`--script` (required for kind=lang), `--ebook-yml`, `--source`, `--prompt`, `--level`, `--translation-lang`, `--chapter`, `--cwd`, `--wire`/`--no-wire` | `ebook` inputs |

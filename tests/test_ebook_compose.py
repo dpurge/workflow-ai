@@ -86,17 +86,17 @@ def _responder(form: str, turns=None):
             if name == "DetectOut":
                 return {"language": "deu", "script": "latn", "title": "Kawa"}
             if name == "VocabularyList":
-                return [{"headword": f"w{i}", "translation": f"t{i}"} for i in range(12)]
+                return {"entries": [{"phrase": f"w{i}", "translation": f"t{i}"} for i in range(12)]}
             if name == "ModelList":
-                return [{"pattern": f"p{i}", "translation": f"t{i}"} for i in range(4)]
+                return {"entries": [{"phrase": f"p{i}", "translation": f"t{i}"} for i in range(4)]}
             if name == "QuestionList":
-                return [f"q{i}?" for i in range(4)]
+                return {"entries": [f"q{i}?" for i in range(4)]}
             raise AssertionError(name)
         p = inv.prompt
         if p.startswith("Translate to"):
-            return "Tłumaczenie."
+            return "# Tłumaczenie\n\nTreść."
         if p.startswith("Explain the key grammar"):
-            return "## Gramatyka"
+            return "# Gramatyka\n\nTreść"
         raise AssertionError(p[:40])
 
     return responder
@@ -126,10 +126,16 @@ def test_compose_path_runs_and_renders(tmp_path, monkeypatch):
     assert "detect" in nodes and nodes[-1] == "render"
     # 22 planned web searches + 1 target-language Wikipedia call were issued
     assert calls["n"] >= 23
-    chapter = Path(result.branches[0].context.data["out_path"]).read_text(encoding="utf-8")
+    out_path = Path(result.branches[0].context.data["out_path"])
+    assert out_path.parent.name == "a2"
+    assert out_path.name == "001.md"
+    chapter = out_path.read_text(encoding="utf-8")
+    assert chapter.startswith("# a2-001")
     assert "{start-text as=source lang=deu script=latn}" in chapter  # target
     assert "{start-text as=translation lang=pol script=latn}" in chapter  # book/reader
     assert "Kaffee Getränk Koffein" in chapter
+    assert "\n## Tłumaczenie\n" in chapter
+    assert "\n## Gramatyka\n" in chapter
 
 
 def test_compose_dialog_form_renders_dialog_fence(tmp_path, monkeypatch):

@@ -4,7 +4,7 @@ description: Mandarin Chinese Simplified (Putonghua, ISO 639-3 cmn, Simplified s
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -132,7 +132,7 @@ Rendered lines (Pinyin follows the typography rules above; Polish keeps its diac
 The JSON for the first line (no braces/brackets in the fields, `notes` null):
 
 ```json
-{"headword": "狗", "grammar": "N 只", "transcription": "gǒu", "translation": "pies", "notes": null}
+{"phrase": "狗", "grammar": "N 只", "transcription": "gǒu", "translation": "pies", "notes": null}
 ```
 
 ## Grammar notes (B1+)

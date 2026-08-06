@@ -89,7 +89,7 @@ Follow these steps in order. Don't skip.
    Per-language skills carry: transcription system (if non-Latin), vocabulary shape (article + gender for nouns, conjugation hints for verbs), inflection-table format, formality defaults.
 4. **Pick the CEFR level** (`a1`–`c2`, lowercase). Ask the user if unsure. Read `references/levels.md` for word-count and grammar targets.
 5. **Adapt the source text** to the target level — simplify vocabulary and grammar to match. Aim for the word-count targets in `references/levels.md`. Keep the meaning. Stay in coherent prose (no bullet lists).
-6. **Extract vocabulary** — 15–40 entries depending on level. Each entry: foreign headword, grammar tag, Polish gloss. The exact shape (article placement, gender markers, etc.) comes from the language skill loaded in step 3. Grammar tags follow `references/vocabulary.md`; the canonical tags are not yet finalised in the real source data, so use them when generating lessons. **When an entry has multiple senses, separate them in the Polish translation with `; ` (semicolon + space)** — e.g. `"wszyscy; wszystkie"`, `"dzień dobry; cześć"`.
+6. **Extract vocabulary** — 15–40 entries depending on level. In the lesson JSON, each entry uses the field name `phrase` for the foreign word/phrase in dictionary/citation form, plus the grammar tag and Polish gloss. The exact shape (article placement, gender markers, etc.) comes from the language skill loaded in step 3. Grammar tags follow `references/vocabulary.md`; the canonical tags are not yet finalised in the real source data, so use them when generating lessons. **When an entry has multiple senses, separate them in the Polish translation with `; ` (semicolon + space)** — e.g. `"wszyscy; wszystkie"`, `"dzień dobry; cześć"`.
 7. **Build models** — 3–6 progressive phrase patterns that illustrate the constructions used in the source.
 8. **Compose translation** — Polish prose translation of the source.
 9. **Compose transcription** if the script is non-Latin (`arab`, `hans`, `jpan`, `kore`, `hebr`, etc.) — using the transcription system the language skill specifies.
@@ -153,7 +153,7 @@ Invoke every tool via `uv run --script` so its [PEP 723](https://peps.python.org
   | `translation.language` | `translation_lang` |
   | `translation.script` | `translation_script` |
 
-  **Vocabulary items:** each line in the `.ff` body has the form `headword {grammar} [transcription] = translation (notes)`. All parts except `headword` are optional. Multiple translations separated by `; ` are preserved as-is in the `translation` field. The parenthetical at the end of the line becomes `notes`.
+  **Vocabulary items:** each line in the `.ff` body has the form `phrase {grammar} [transcription] = translation (notes)`. In the parsed/generated lesson JSON, that first textual slot also uses the field name `phrase`. All parts except the word/phrase itself are optional. Multiple translations separated by `; ` are preserved as-is in the `translation` field. The parenthetical at the end of the line becomes `notes`.
 
   **Dialog body:** The raw `@Speaker:` / `--:` / indented-body format is parsed into a structured `DialogSource` with typed `DialogTurn` and `Narration` items, matching the phraseforge-web remark plugin conventions.
 

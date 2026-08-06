@@ -154,7 +154,7 @@ def orient_project(context: WorkflowContext) -> dict[str, Any]:
         "translation_script": translation_script,
         "book_title": project.get("title"),
         "section": section,
-        "chapter": d.get("chapter") or _derive_chapter(text_sections),
+        "chapter": d.get("chapter") or _derive_chapter(text_sections, kind=kind, level=d.get("level")),
     }
 
 
@@ -322,13 +322,44 @@ def store_detect(output: DetectOut, context: WorkflowContext) -> WorkflowContext
     return context
 
 
+@updater("store_entries")
+def store_entries(output: VocabularyList | ModelList | QuestionList, context: WorkflowContext) -> WorkflowContext:
+    """Store object-wrapped list outputs as plain lists for the renderer."""
+    node_id = context.history[-1].node_id if context.history else None
+    key_by_node = {
+        "vocabulary": "vocabulary",
+        "models": "models",
+        "questions": "questions",
+    }
+    key = key_by_node.get(node_id)
+    if key is None:
+        raise ValueError(f"store_entries used outside vocabulary/models/questions (node={node_id!r})")
+    context.data[key] = [e.model_dump() if hasattr(e, "model_dump") else e for e in (output.entries or [])]
+    return context
+
+
 # --- helpers ---------------------------------------------------------------
+
+
+def _lesson_title(d: dict[str, Any]) -> str:
+    """Deterministic language-lesson chapter title.
+
+    Use `<level>-<chapter-stem>` when available (e.g. `b1-001`) so generated
+    lesson files align with the book structure rather than source/article titles.
+    Generic prose chapters keep their authored/book title elsewhere.
+    """
+    level = (d.get("level") or "").strip().lower()
+    chapter = str(d.get("chapter") or "").strip()
+    stem = Path(chapter).stem if chapter else ""
+    if level and stem:
+        return f"{level}-{stem}"
+    return d.get("title") or d.get("book_title") or "Lekcja"
 
 
 def _assemble_lesson(d: dict[str, Any]) -> dict[str, Any]:
     """Build the lesson dict the renderer expects from accumulated context."""
     return {
-        "title": d.get("title") or d.get("book_title") or "Lekcja",
+        "title": _lesson_title(d),
         "lang": d.get("language"),
         "script": d.get("script"),
         "translation_lang": d.get("translation_lang", "pol"),
@@ -354,23 +385,44 @@ def _find_ebook_yml(base: Path) -> Path | None:
     return None
 
 
-def _derive_chapter(text_sections: list[Any]) -> str:
-    """Derive the next chapter filename from the first section's numeric chapters
-    (e.g. `.../03.md` → `.../04.md`); default `01.md` when none are numbered."""
+def _derive_chapter(text_sections: list[Any], *, kind: str, level: str | None = None) -> str:
+    """Derive the next chapter filename.
+
+    Generic chapters keep the historical flat `NN.md` layout. Language lessons
+    with a CEFR level default to `<level>/NNN.md` (e.g. `b1/001.md`). Only
+    chapters already inside that target subdirectory contribute to the next
+    number; older flat files are ignored so projects can migrate layouts.
+    """
     entries: list[str] = []
-    if text_sections and isinstance(text_sections[0], list):
+    section_dir = ""
+    if text_sections and isinstance(text_sections[0], list) and text_sections[0]:
+        section = Path(str(text_sections[0][0]))
+        section_dir = "" if str(section.parent) == "." else str(section.parent)
         entries = [str(e) for e in text_sections[0][1:]]  # skip the section file
+
+    kind = (kind or "").lower()
+    level = (level or "").lower() or None
+    if kind == "lang":
+        subdir = level or section_dir
+        width = 3
+    else:
+        subdir = section_dir
+        width = 2
+
     nums: list[int] = []
-    subdir = ""
     for entry in entries:
         p = Path(entry)
-        if str(p.parent) != ".":
-            subdir = str(p.parent)
+        entry_dir = "" if str(p.parent) == "." else str(p.parent)
+        if subdir:
+            if entry_dir != subdir:
+                continue
+        elif entry_dir:
+            subdir = entry_dir
         m = re.fullmatch(r"(\d+)", p.stem)
         if m:
             nums.append(int(m.group(1)))
     nxt = (max(nums) + 1) if nums else 1
-    name = f"{nxt:02d}.md"
+    name = f"{nxt:0{width}d}.md"
     return str(Path(subdir) / name) if subdir else name
 
 
@@ -537,20 +589,20 @@ def ground_check(output: ComposeOut, context: WorkflowContext) -> VerifyResult:
 
 @verifier("vocab_min10")
 def vocab_min10(output: VocabularyList, context: WorkflowContext) -> VerifyResult:
-    n = len(output.root)
+    n = len(output.entries)
     return VerifyResult(ok=n >= 10, errors=[] if n >= 10 else [f"need >=10 vocabulary entries, got {n}"])
 
 
 @verifier("models_3_8")
 def models_3_8(output: ModelList, context: WorkflowContext) -> VerifyResult:
-    n = len(output.root)
+    n = len(output.entries)
     ok = 3 <= n <= 8
     return VerifyResult(ok=ok, errors=[] if ok else [f"need 3-8 models, got {n}"])
 
 
 @verifier("questions_3_8")
 def questions_3_8(output: QuestionList, context: WorkflowContext) -> VerifyResult:
-    n = len(output.root)
+    n = len(output.entries)
     ok = 3 <= n <= 8
     return VerifyResult(ok=ok, errors=[] if ok else [f"need 3-8 questions, got {n}"])
 

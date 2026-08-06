@@ -101,6 +101,27 @@ def test_exhausted_retries_raises():
         engine.run(graph, "x", retries_override=2)
 
 
+def test_exhausted_retries_save_partial_returns_failed_branch():
+    graph = WorkflowGraph.from_yaml(FIXTURE)
+
+    def always_bad(invocation: AgentInvocation) -> dict:
+        if invocation.schema.__name__ == "_FoSplitOut":
+            return {"nope": True}
+        return _responder(invocation)
+
+    engine = Engine(ScriptedBackend(always_bad))
+    result = engine.run(graph, "x", retries_override=2, save_partial=True)
+
+    assert result.status == "partial"
+    assert len(result.branches) == 1
+    branch = result.branches[0]
+    assert branch.status == "failed"
+    assert branch.failed_node == "split"
+    assert branch.terminal_node is None
+    assert "failed after 2 attempts" in (branch.error or "")
+    assert branch.context.history == []
+
+
 def test_invalid_transition_rejected():
     graph = WorkflowGraph.from_yaml(FIXTURE)
 
@@ -112,6 +133,31 @@ def test_invalid_transition_rejected():
     engine = Engine(ScriptedBackend(bad_transition))
     with pytest.raises(WorkflowError, match="invalid state"):
         engine.run(graph, "x")
+
+
+def test_save_partial_keeps_successful_branches_alongside_failed_ones():
+    graph = WorkflowGraph.from_yaml(FIXTURE)
+
+    def one_bad_leaf(invocation: AgentInvocation) -> dict:
+        if invocation.schema.__name__ == "_FoSplitOut":
+            return _responder(invocation)
+        if invocation.schema.__name__ == "_FoLeafOut":
+            if "Branch B gatherer." in invocation.system_prompt:
+                return {"bad": True}
+            return {"findings": ["a finding"]}
+        raise AssertionError(invocation.schema.__name__)
+
+    engine = Engine(ScriptedBackend(one_bad_leaf))
+    result = engine.run(graph, "x", save_partial=True)
+
+    assert result.status == "partial"
+    assert len(result.branches) == 2
+    assert sorted(b.status for b in result.branches) == ["failed", "success"]
+    failed = next(b for b in result.branches if b.status == "failed")
+    ok = next(b for b in result.branches if b.status == "success")
+    assert failed.failed_node == "leaf_b"
+    assert [r.node_id for r in failed.context.history] == ["split"]
+    assert ok.terminal_node == "done"
 
 
 def test_dump_run_round_trips_unicode(tmp_path):
@@ -133,3 +179,18 @@ def test_dump_run_round_trips_unicode(tmp_path):
 
     reloaded = json.loads((out / "result.json").read_text(encoding="utf-8"))
     assert reloaded["branches"][0]["context"]["data"]["topic"] == "DAG — déjà vu →"
+
+
+def test_dump_run_names_failed_branch_files(tmp_path):
+    graph = WorkflowGraph.from_yaml(FIXTURE)
+
+    def always_bad(invocation: AgentInvocation) -> dict:
+        if invocation.schema.__name__ == "_FoSplitOut":
+            return {"nope": True}
+        return _responder(invocation)
+
+    engine = Engine(ScriptedBackend(always_bad))
+    result = engine.run(graph, "x", retries_override=1, save_partial=True)
+    out = dump_run(result, tmp_path / "run")
+
+    assert (out / "branch-0-split.json").exists()

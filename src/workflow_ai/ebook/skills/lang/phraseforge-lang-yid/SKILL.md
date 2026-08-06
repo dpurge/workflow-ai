@@ -4,7 +4,7 @@ description: Yiddish (Yidish, ISO 639-3 yid) language conventions for PhraseForg
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -95,7 +95,7 @@ Eastern Yiddish pronunciation (YIVO standard).
 
 Field rules follow the injected **phraseforge-entry-format** skill. Yiddish-specific rules (grammar is Germanic, written in Hebrew letters):
 
-- **Nouns:** Yiddish has 3 genders: `m`, `f`, `n`. Include the **definite article** (`דער`/`der` m., `די`/`di` f., `דאָס`/`dos` n.) in the headword. Mark gender: `{N m}` / `{N f}` / `{N n}`.
+- **Nouns:** Yiddish has 3 genders: `m`, `f`, `n`. Include the **definite article** (`דער`/`der` m., `די`/`di` f., `דאָס`/`dos` n.) in the dictionary/citation form. Mark gender: `{N m}` / `{N f}` / `{N n}`.
 - **Verbs:** infinitive (ending `-n` or `-en`), tag `{V}`.
 - **Adjectives:** uninflected predicative form, tag `{Adj}`.
 

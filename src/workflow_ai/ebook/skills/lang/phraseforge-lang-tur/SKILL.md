@@ -4,7 +4,7 @@ description: Turkish (Turkce, ISO 639-3 tur) language conventions for PhraseForg
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -43,7 +43,7 @@ küçük {Adj} = mały
 hızlı {Adv} = szybko
 ```
 
-(Actual headwords with Turkish characters: `köpek`, `ev`, `kadın`, `çocuk`, `konuşmak`, `görmek`, `olmak`, `küçük`, `hızlı`.)
+(Actual dictionary/citation forms with Turkish characters: `köpek`, `ev`, `kadın`, `çocuk`, `konuşmak`, `görmek`, `olmak`, `küçük`, `hızlı`.)
 
 ## Grammar notes (B1+)
 

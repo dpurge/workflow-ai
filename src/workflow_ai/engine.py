@@ -42,6 +42,7 @@ class Engine:
         retries_override: int | None = None,
         model_override: str | None = None,
         on_event: Any = None,
+        save_partial: bool = False,
     ) -> RunResult:
         result = RunResult(workflow=graph.name)
         root = WorkflowContext(initial_prompt=initial_prompt, data=dict(initial_data or {}))
@@ -56,27 +57,45 @@ class Engine:
             node = graph.node(node_id)
             emit("enter", node_id)
 
-            if node.terminal:
-                emit("terminal", node_id, {"context_data": dict(context.data)})
-                result.branches.append(BranchResult(terminal_node=node_id, context=context))
-                continue
+            try:
+                if node.terminal:
+                    emit("terminal", node_id, {"context_data": dict(context.data)})
+                    result.branches.append(
+                        BranchResult(status="success", terminal_node=node_id, context=context)
+                    )
+                    continue
 
-            output, run = self._execute_node(node, context, retries_override, model_override, emit, graph.yaml_path)
-            context.record(run)
-            emit("output", node_id, {"raw_output": run.raw_output})
-            context = self._apply_update(node, output, context)
-            emit("context", node_id, {"context_data": dict(context.data)})
-
-            successors = self._resolve_transition(node, output, context)
-            invalid = [s for s in successors if s not in node.successors]
-            if invalid:
-                raise WorkflowError(
-                    f"node '{node.id}' routed to invalid state(s) {invalid}; "
-                    f"allowed: {node.successors}"
+                output, run = self._execute_node(
+                    node, context, retries_override, model_override, emit, graph.yaml_path
                 )
-            emit("transition", node_id, {"successors": successors})
-            for succ in successors:
-                worklist.append((succ, copy.deepcopy(context)))
+                context.record(run)
+                emit("output", node_id, {"raw_output": run.raw_output})
+                context = self._apply_update(node, output, context)
+                emit("context", node_id, {"context_data": dict(context.data)})
+
+                successors = self._resolve_transition(node, output, context)
+                invalid = [s for s in successors if s not in node.successors]
+                if invalid:
+                    raise WorkflowError(
+                        f"node '{node.id}' routed to invalid state(s) {invalid}; "
+                        f"allowed: {node.successors}"
+                    )
+                emit("transition", node_id, {"successors": successors})
+                for succ in successors:
+                    worklist.append((succ, copy.deepcopy(context)))
+            except WorkflowError as exc:
+                if not save_partial:
+                    raise
+                emit("failed", node_id, {"error": str(exc), "context_data": dict(context.data)})
+                result.status = "partial"
+                result.branches.append(
+                    BranchResult(
+                        status="failed",
+                        failed_node=node_id,
+                        error=str(exc),
+                        context=context,
+                    )
+                )
 
         return result
 
@@ -379,7 +398,8 @@ def dump_run(result: RunResult, out_dir: str | Path) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     (out / "result.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
     for i, branch in enumerate(result.branches):
-        (out / f"branch-{i}-{branch.terminal_node}.json").write_text(
+        label = branch.terminal_node or branch.failed_node or branch.status
+        (out / f"branch-{i}-{label}.json").write_text(
             branch.context.model_dump_json(indent=2), encoding="utf-8"
         )
     return out

@@ -4,7 +4,7 @@ description: Persian/Farsi (Farsi, ISO 639-3 fas) language conventions for Phras
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -110,7 +110,7 @@ Note: ع is kept as grapheme marker ʿ; pronounced /ʔ/ or elided in Persian (no
 Field rules follow the injected **phraseforge-entry-format** skill. Persian-specific rules:
 
 - **No grammatical gender.** All nouns take `{N}`.
-- **Nouns:** bare form as headword, no articles. Plural formed by `ها-` (`-hā`) suffix.
+- **Nouns:** bare dictionary/citation form, no articles. Plural formed by `ها-` (`-hā`) suffix.
 - **Verbs:** infinitive form (ending in `-an`/`-dan`). Tag `{V}`. Add `irreg` for irregular stems.
 - **Adjectives:** uninflected form, tag `{Adj}`.
 

@@ -4,7 +4,7 @@ description: Ancient Greek (Hellenike, ISO 639-3 grc) language conventions for P
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -24,7 +24,7 @@ Not required. Greek script is excluded from transcription block per `phraseforge
 
 Field rules follow the injected **phraseforge-entry-format** skill. Ancient Greek-specific rules:
 
-- **Nouns:** include the **definite article** (ὁ/m, ἡ/f, τό/n) and the genitive ending as headword — standard dictionary format: `λόγος, -ου, ὁ`. Mark gender: `{N m}` / `{N f}` / `{N n}`. Add declension: `{N m 2}` (2nd), `{N f 1}` (1st), `{N m 3}` (3rd), etc.
+- **Nouns:** include the **definite article** (ὁ/m, ἡ/f, τό/n) and the genitive ending in the dictionary/citation form — standard dictionary format: `λόγος, -ου, ὁ`. Mark gender: `{N m}` / `{N f}` / `{N n}`. Add declension: `{N m 2}` (2nd), `{N f 1}` (1st), `{N m 3}` (3rd), etc.
 - **Verbs:** first-person singular present active indicative (1pp). Tag `{V}`. Note the conjugation class when useful (thematic / athematic / contract).
 - **Adjectives:** masculine singular nominative, tag `{Adj}`.
 

@@ -31,6 +31,7 @@ uv run workflow-ai ebook --kind lang --lang cmn --script hans --source <url|file
 - `engine.py` runs each node: produce output (model or action) → Pydantic-validate → `@verifier` →
   retry on fail → `@updater` folds into `WorkflowContext.data` → resolve next edge (`@router` / static /
   model-chosen). Backends in `backends/` (anthropic_sdk, openai_sdk, copilot) implement `run(AgentInvocation)`.
+- **Structured-output compatibility rule (IMPORTANT): every registered workflow schema MUST have a top-level JSON Schema `type: object`.** Do **NOT** use `RootModel[list[...]]` (or any other top-level array schema) for node outputs. Some providers/models — notably **GLM** — reject top-level array schemas with errors like *"schema must be an object, not a list"*. If a node semantically returns a list, wrap it in an object field such as `entries: list[...]`, and use an updater to store/unwrap it for the rest of the pipeline if needed. This is a regression-prone, load-bearing rule.
 
 ## ⚠️ The load-bearing facts for lesson QUALITY (hard-won — read before editing skills)
 
@@ -88,6 +89,7 @@ line `headword {grammar} [transcription] = translation (notes)`. Field rules (in
 
 - `lang` = ISO 639-3 (3-letter); `script` = ISO 15924 lowercase (4-letter). Reader/translation language
   default Polish. Keep all Polish diacritics everywhere.
+- When adding or editing schemas, **check the emitted JSON Schema root type**. It must be `object`, never `array`. Prefer `BaseModel` with named fields over `RootModel`. If you intentionally accept legacy raw-list payloads for compatibility, do it via validators while keeping the emitted schema object-shaped.
 - After editing `workflow.yaml`/`definitions.py`, run `uv run workflow-ai validate ebook`. After editing
   skills, run `uv run pytest tests/test_ebook_skills_bundle.py -q`. Keep the full suite green.
 - Do not commit unless asked. Do not edit generated lesson output in `epub-public` to fix a generation

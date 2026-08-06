@@ -4,7 +4,7 @@ description: French (Français, ISO 639-3 fra) language conventions for PhraseFo
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -24,7 +24,7 @@ Not needed. French uses Latin script. Preserve all accents and special character
 
 Field rules follow the injected **phraseforge-entry-format** skill. French-specific rules:
 
-- **Nouns:** include the **definite article** (`le`, `la`, `l'`, `les`) in the headword to show gender. Mark gender: `{N m}` / `{N f}`.
+- **Nouns:** include the **definite article** (`le`, `la`, `l'`, `les`) in the dictionary/citation form to show gender. Mark gender: `{N m}` / `{N f}`.
 - **Verbs:** infinitive form. Tag with verb group: `{V er}` (-er), `{V ir}` (-ir), `{V re}` (-re). Add `irreg` for irregular verbs.
 - **Adjectives:** masculine singular form, tag `{Adj}`.
 

@@ -31,21 +31,21 @@ def _responder_for(lang: str, script: str):
             if name == "DetectOut":
                 return {"language": lang, "script": script, "title": "Lekcja"}
             if name == "VocabularyList":
-                return [{"headword": f"w{i}", "translation": f"t{i}"} for i in range(12)]
+                return {"entries": [{"phrase": f"w{i}", "translation": f"t{i}"} for i in range(12)]}
             if name == "ModelList":
-                return [{"pattern": f"p{i}", "translation": f"t{i}"} for i in range(4)]
+                return {"entries": [{"phrase": f"p{i}", "translation": f"t{i}"} for i in range(4)]}
             if name == "QuestionList":
-                return [f"Frage {i}?" for i in range(4)]
+                return {"entries": [f"Frage {i}?" for i in range(4)]}
             raise AssertionError(name)
         p = inv.prompt
         if p.startswith("Source:"):
-            return "Cleaned source text."
+            return "# Tytuł\n\n**Cleaned** source text."
         if p.startswith("Transcribe"):
-            return "romanized"
+            return "# Romanized\n\n**romanized**"
         if p.startswith("Translate to"):
-            return "Tłumaczenie."
+            return "# Tłumaczenie\n\n**Przekład**."
         if p.startswith("Explain the key grammar"):
-            return "## Gramatyka\nProsta."
+            return "# Gramatyka\n\nProsta."
         if p.startswith("Book language"):  # generic gen_write
             return "# Generic Chapter\n\nProse body with a source [web:example]."
         raise AssertionError(f"unexpected text prompt: {p[:40]}")
@@ -121,15 +121,18 @@ def test_language_branch_renders_fenced_chapter(tmp_path, monkeypatch):
 
     out_path = Path(result.branches[0].context.data["out_path"])
     chapter = out_path.read_text(encoding="utf-8")
-    # derived chapter is the next number after 01.md
-    assert out_path.name == "02.md"
-    assert chapter.startswith("# Lekcja")
+    assert out_path.parent.name == "b1"
+    assert out_path.name == "001.md"
+    assert chapter.startswith("# b1-001")
     assert "{start-vocabulary lang=deu script=latn}" in chapter
     assert "{start-models lang=deu script=latn}" in chapter
     assert "{start-text as=source lang=deu script=latn}" in chapter
     assert "{start-text as=translation lang=pol script=latn}" in chapter
     assert "{start-text as=grammar lang=pol script=latn}" in chapter
     assert "{start-questions" in chapter
+    assert "\n## Tytuł\n" in chapter
+    assert "\n## Tłumaczenie\n" in chapter
+    assert "\n## Gramatyka\n" in chapter
     # ebook format has NO exercise block
     assert "exercise" not in chapter
 
@@ -154,14 +157,14 @@ def test_language_branch_wires_into_ebook_yml(tmp_path, monkeypatch):
     result, ebook_yml = _run(tmp_path, monkeypatch, wire=True)
     assert result.branches[0].context.data["wired"] is True
     project = yaml.safe_load(ebook_yml.read_text(encoding="utf-8"))
-    assert "02.md" in project["text"][0]
+    assert "b1/001.md" in project["text"][0]
 
 
 def test_no_wire_leaves_ebook_yml_untouched(tmp_path, monkeypatch):
     result, ebook_yml = _run(tmp_path, monkeypatch, wire=False)
     assert result.branches[0].context.data["wired"] is False
     project = yaml.safe_load(ebook_yml.read_text(encoding="utf-8"))
-    assert "02.md" not in project["text"][0]
+    assert "b1/001.md" not in project["text"][0]
 
 
 def test_latin_script_skips_transcription(tmp_path, monkeypatch):
@@ -176,6 +179,8 @@ def test_nonlatin_script_runs_transcription(tmp_path, monkeypatch):
     assert "transcribe" in nodes
     chapter = Path(result.branches[0].context.data["out_path"]).read_text(encoding="utf-8")
     assert "{start-text as=transcription lang=arb script=latn}" in chapter
+    assert "\n## Romanized\n" in chapter
+    assert "**romanized**" in chapter
 
 
 def test_store_detect_does_not_clobber_book_script(tmp_path, monkeypatch):
@@ -193,11 +198,11 @@ def test_store_detect_does_not_clobber_book_script(tmp_path, monkeypatch):
             if name == "DetectOut":
                 return {"language": "eng", "script": "latn", "title": "T"}  # wrong on purpose
             if name == "VocabularyList":
-                return [{"headword": f"w{i}", "translation": f"t{i}"} for i in range(12)]
+                return {"entries": [{"phrase": f"w{i}", "translation": f"t{i}"} for i in range(12)]}
             if name == "ModelList":
-                return [{"pattern": f"p{i}", "translation": f"t{i}"} for i in range(4)]
+                return {"entries": [{"phrase": f"p{i}", "translation": f"t{i}"} for i in range(4)]}
             if name == "QuestionList":
-                return [f"q{i}?" for i in range(4)]
+                return {"entries": [f"q{i}?" for i in range(4)]}
             raise AssertionError(name)
         p = inv.prompt
         if p.startswith("Source:"):

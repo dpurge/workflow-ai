@@ -15,7 +15,7 @@ from .backends.copilot import CopilotBackend
 from .backends.openai_sdk import OpenAIBackend
 from . import copilot_auth
 from .config import load_config
-from .engine import Engine, dump_run
+from .engine import Engine, WorkflowError, dump_run
 from .logger import RunLogger
 from .graph import GraphError, WorkflowGraph
 
@@ -132,6 +132,7 @@ def run(
     copilot_config: str = typer.Option(None, "--copilot-config", help="Path to Copilot credentials file (default: ~/.config/workflow-ai/copilot.json)"),
     retries: int = typer.Option(None, "--retries", help="Override per-node retry count"),
     out: str = typer.Option(None, "--out", help="Output directory for results"),
+    save_partial: bool = typer.Option(False, "--save-partial", help="On failure, save partial results/context to --out before exiting non-zero"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Print node events and context snapshots to stdout"),
     log_file: str = typer.Option(None, "--log-file", help="Write verbose output to this file (in addition to stdout when --verbose)"),
 ) -> None:
@@ -243,16 +244,30 @@ def run(
                 typer.secho(f"→ {node_id}", fg=typer.colors.CYAN)
             logger(kind, node_id, data)
 
-        result = engine.run(
-            graph,
-            prompt,
-            initial_data=initial_data,
-            retries_override=retries,
-            model_override=model,
-            on_event=on_event,
-        )
+        try:
+            result = engine.run(
+                graph,
+                prompt,
+                initial_data=initial_data,
+                retries_override=retries,
+                model_override=model,
+                on_event=on_event,
+                save_partial=save_partial,
+            )
+        except WorkflowError as exc:
+            typer.secho(str(exc), fg=typer.colors.RED, err=True)
+            raise typer.Exit(1)
 
     path = dump_run(result, out)
+    if result.status == "partial":
+        failed = [b for b in result.branches if b.status == "failed"]
+        typer.secho(
+            f"Run failed in {len(failed)} branch(es); partial results saved → {path}",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+        raise typer.Exit(1)
+
     typer.secho(
         f"Done: {len(result.branches)} terminal branch(es) → {path}",
         fg=typer.colors.GREEN,

@@ -4,7 +4,7 @@ description: Latin (Latina, ISO 639-3 lat) language conventions for PhraseForge 
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -24,8 +24,8 @@ Not needed. Latin uses Latin script. Macrons (ā ē ī ō ū) are optional but r
 
 Field rules follow the injected **phraseforge-entry-format** skill. Latin-specific rules:
 
-- **Nouns:** nominative singular as headword; mark gender: `{N m}` / `{N f}` / `{N n}`. Optionally add declension class: `{N f 1}` (1st), `{N m 2}` (2nd), `{N f 3}` (3rd), etc.
-- **Verbs:** first-person present active indicative as headword (dictionary form). Tag with conjugation class: `{V 1}` (1st), `{V 2}` (2nd), `{V 3}` (3rd), `{V 4}` (4th). Add `irreg` for irregular.
+- **Nouns:** nominative singular as the dictionary/citation form; mark gender: `{N m}` / `{N f}` / `{N n}`. Optionally add declension class: `{N f 1}` (1st), `{N m 2}` (2nd), `{N f 3}` (3rd), etc.
+- **Verbs:** first-person present active indicative as the dictionary/citation form. Tag with conjugation class: `{V 1}` (1st), `{V 2}` (2nd), `{V 3}` (3rd), `{V 4}` (4th). Add `irreg` for irregular.
 - **Adjectives:** masculine nominative singular (2-1-2 or 3rd declension), tag `{Adj}`.
 
 ```

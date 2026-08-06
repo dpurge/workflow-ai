@@ -4,7 +4,7 @@ description: Hebrew (Ivrit, ISO 639-3 heb) language conventions for PhraseForge 
 ---
 
 > **HOW TO USE THIS SKILL — MANDATORY.** You may be a small model. Follow these
-> conventions EXACTLY. Copy the tag shapes, headword forms, and line formats from
+> conventions EXACTLY. Copy the tag shapes, dictionary/citation forms, and line formats from
 > the examples below **literally** — do not invent tags, do not add explanations
 > or extra prose, do not change the format. Produce ONLY the output this step asks
 > for, in the exact shape shown. When unsure, prefer the example over your own idea.
@@ -133,7 +133,7 @@ scientific base; the reading rules reflect Modern Hebrew pronunciation.
 
 Field rules follow the injected **phraseforge-entry-format** skill. Hebrew-specific rules:
 
-- **Nouns:** mark gender: `{N m}` / `{N f}`. No indefinite article in Hebrew; the definite article is the prefix `ה` (`ha-`). Use bare form as headword.
+- **Nouns:** mark gender: `{N m}` / `{N f}`. No indefinite article in Hebrew; the definite article is the prefix `ה` (`ha-`). Use the bare form as the dictionary/citation form.
 - **Verbs:** infinitive (with `ל`-prefix: `לכתוב`), or root form. Tag `{V}`. Mark binyan (verb pattern) when helpful: `{V qal}`, `{V piel}`, `{V hifil}`, etc.
 - **Adjectives:** masculine singular form, tag `{Adj}`.
 

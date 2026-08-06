@@ -7,7 +7,7 @@ verified, then folded into the context by an updater function.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -45,14 +45,18 @@ class WorkflowContext(BaseModel):
 
 
 class BranchResult(BaseModel):
-    """A single terminal branch outcome."""
+    """A single terminal or failed branch outcome."""
 
-    terminal_node: str
+    status: Literal["success", "failed"]
     context: WorkflowContext
+    terminal_node: str | None = None
+    failed_node: str | None = None
+    error: str | None = None
 
 
 class RunResult(BaseModel):
-    """Aggregate result of a full workflow run (one entry per terminal branch)."""
+    """Aggregate result of a full workflow run (one entry per branch)."""
 
     workflow: str
+    status: Literal["success", "partial"] = "success"
     branches: list[BranchResult] = Field(default_factory=list)

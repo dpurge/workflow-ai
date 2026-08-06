@@ -133,12 +133,20 @@ nodes:
       so use Latin-script typography: Latin punctuation (, . ! ? : ; " ' ( )) — NOT
       the source script's punctuation — and normal capitalization (first word of
       each sentence and proper nouns), exactly as the language skill specifies.
-      Output the transcription only.
+      PRESERVE the Markdown structure of the input: keep headings, emphasis
+      (`**bold**`, `_italic_`), lists, block quotes, and paragraph breaks. Change
+      ONLY the visible source-language text into its transcription; do not alter
+      Markdown syntax or flatten the structure. Output Markdown only.
     output_kind: text
     produces: transcription
     reads: [text, language, script]
     skills: ["@lang"]
-    prompt: "Transcribe this {language} text:\n\n{text}"
+    prompt: >
+      Transcribe this {language} Markdown into Latin script.
+      Preserve the Markdown structure exactly. Keep any heading hierarchy,
+      emphasis, lists, and paragraph breaks; only romanize the visible text.
+
+      {text}
     next:
       translate: "Hand the romanized text to translation."
 
@@ -146,7 +154,9 @@ nodes:
     role: >
       Translate the text into natural prose in the reader's translation
       language. Write it in that language's FULL native orthography — preserve EVERY diacritic
-      (e.g. Polish ą ę ć ł ń ó ś ź ż); never strip or ASCII-ify them. Output the translation only.
+      (e.g. Polish ą ę ć ł ń ó ś ź ż); never strip or ASCII-ify them. If the input
+      is Markdown, preserve its structure sensibly (headings, emphasis, lists,
+      paragraph breaks) in the translation. Output Markdown only.
     output_kind: text
     produces: translation
     reads: [text, translation_lang]
@@ -157,39 +167,46 @@ nodes:
   vocabulary:
     role: >
       Extract a vocabulary list from the text. You MUST follow the injected format
-      skill and the language skill EXACTLY: copy the headword shape (e.g. article +
+      skill and the language skill EXACTLY: copy the phrase shape (e.g. article +
       gender for nouns), the grammar-tag set, and the field rules — do not invent
-      tags or formats. Each entry is a JSON object: headword (dictionary form);
+      tags or formats. Each entry is a JSON object: phrase (dictionary/citation form);
       grammar tag CONTENT ONLY, with NO curly braces (the renderer adds them);
-      translation in the reader's language (multiple senses joined with '; ');
-      transcription INLINE on EVERY entry for non-Latin scripts (never omit it,
-      never collect it separately). Add a note ONLY when an entry is genuinely
+      translation in the reader's language (multiple senses joined with '; '), with
+      NO embedded end-note parentheses — if a parenthetical clarification belongs at
+      the very end of the final lesson line, put that content in `notes`, not in
+      `translation`; transcription INLINE on EVERY entry for non-Latin scripts (never
+      omit it, never collect it separately). Add a note ONLY when an entry is genuinely
       ambiguous — most entries have no note. Aim for 15-40 entries by level. Return
-      a JSON array only.
+      a JSON object with one key: `entries`, whose value is the array of entry objects.
     schema: vocabulary_out
     verifier: vocab_min10
+    updater: store_entries
     produces: vocabulary
     reads: [text, transcription, translation, language, script]
     skills: ["./skills/format/SKILL.md", "@lang"]
     prompt: "Build vocabulary from this {language} text:\n\n{text}"
     next:
-      models: "Build model phrase patterns."
+      models: "Build model phrases."
 
   models:
     role: >
-      Build 3-6 model phrase patterns that illustrate constructions from the
+      Build 3-6 model phrases that illustrate constructions from the
       text, each building toward a full sentence. Follow the injected format skill
       and the language skill for word forms, tags, and field rules. Each entry is a
-      JSON object: pattern (foreign); translation in the reader's language
-      (required); transcription INLINE on EVERY entry for non-Latin scripts (never
-      omit it). Add a note ONLY when genuinely needed — most entries have no note.
-      Return a JSON array only.
+      JSON object: phrase (foreign); translation in the reader's language
+      (required), with NO embedded end-note parentheses — if a parenthetical
+      clarification belongs at the very end of the final lesson line, put that
+      content in `notes`, not in `translation`; transcription INLINE on EVERY entry
+      for non-Latin scripts (never omit it). Add a note ONLY when genuinely needed —
+      most entries have no note.
+      Return a JSON object with one key: `entries`, whose value is the array of entry objects.
     schema: models_out
     verifier: models_3_8
+    updater: store_entries
     produces: models
     reads: [text, transcription, translation]
     skills: ["./skills/format/SKILL.md", "@lang"]
-    prompt: "Build model patterns from this text:\n\n{text}"
+    prompt: "Build model phrases from this text:\n\n{text}"
     next:
       grammar: "Write the grammar block."
 
@@ -211,9 +228,10 @@ nodes:
   questions:
     role: >
       Write 3-6 short, open-ended comprehension questions IN THE LESSON'S
-      LANGUAGE. Return a JSON array of strings.
+      LANGUAGE. Return a JSON object with one key: `entries`, whose value is an array of strings.
     schema: questions_out
     verifier: questions_3_8
+    updater: store_entries
     produces: questions
     reads: [text, language]
     prompt: "Write comprehension questions in {language} for this text:\n\n{text}"

@@ -2,7 +2,7 @@
 
 A fenced code block with info string `models lang=<lang3> script=<script>`.
 
-Models show **phrase patterns and progressively built example sentences**
+Models show **progressively built phrases and example sentences**
 that combine the vocabulary into usable chunks. Each line is one entry,
 syntactically the same as a vocabulary line **but without grammar marks**:
 
@@ -14,7 +14,7 @@ syntactically the same as a vocabulary line **but without grammar marks**:
 - Transcription brackets `[…]` are required for non-Latin scripts.
 - No `{grammar marks}`.
 
-## Pattern
+## Progression
 
 Build up from short pieces to a full sentence, like this Arabic example:
 
@@ -32,6 +32,9 @@ Build up from short pieces to a full sentence, like this Arabic example:
 Blank lines separate groups of related entries (one group per
 sentence/idea). Each group should culminate in a full sentence from the
 text.
+
+In the lesson JSON that feeds rendering, each models entry uses the field name
+`phrase`.
 
 ## How many groups
 

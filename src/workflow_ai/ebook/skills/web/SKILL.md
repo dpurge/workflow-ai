@@ -26,7 +26,7 @@ description: <Polish one-liner>
 # <Polish title>
 
 ```vocabulary lang=<lang3> script=<script4>
-<headword> {<grammar tag>} [<transcription>] = <translation> (<notes>)
+<phrase> {<grammar tag>} [<transcription>] = <translation> (<notes>)
 ... (15–40 entries; omit optional parts when absent)
 ```
 

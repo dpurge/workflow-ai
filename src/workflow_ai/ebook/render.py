@@ -4,10 +4,10 @@ Assembles a language lesson into a `{start-*}`-fenced Markdown chapter, renders
 a generic prose chapter, and wires a chapter file into an `ebook.yml` project.
 Mirrors the cli-tools `ebook` builder's fence contract:
 
-  - vocabulary: `headword {grammar} [transcription] = translation (notes)` —
+  - vocabulary: `phrase {grammar} [transcription] = translation (notes)` —
     never a bare `=` (a raw `=` in the gloss is swapped for a full-width `＝`
     because the vocabulary parser splits on the RIGHTMOST `=`).
-  - models:     `pattern [transcription] = translation` (first ` = ` splits).
+  - models:     `phrase [transcription] = translation` (first ` = ` splits).
   - text:       raw markdown, `as=` in {source, transcription, translation, grammar}.
   - questions:  one question per line.
   - every chapter starts with an `# H1`.
@@ -43,10 +43,10 @@ def _with_notes(translation: str | None, notes: str | None) -> str:
 
 
 def _vocab_line(entry: dict[str, Any]) -> str | None:
-    headword = (entry.get("headword") or "").strip()
-    if not headword:
+    phrase = (entry.get("phrase") or entry.get("headword") or "").strip()
+    if not phrase:
         return None
-    parts = [headword]
+    parts = [phrase]
     # Defensive: a model may emit the tag already wrapped ("{N}"/"{{N}}") or the
     # transcription bracketed ("[gǒu]"). Strip the OUTER brace/bracket run only
     # (not individual inner chars) so the renderer's own wrapping never doubles.
@@ -69,11 +69,11 @@ def _vocab_line(entry: dict[str, Any]) -> str | None:
 def _model_line(entry: dict[str, Any]) -> str | None:
     # Models split on the FIRST ` = ` (spaces), so a raw `=` in the gloss is
     # harmless here — no full-width neutralisation needed (unlike vocabulary).
-    pattern = (entry.get("pattern") or "").strip()
+    phrase = (entry.get("phrase") or entry.get("pattern") or "").strip()
     translation = (entry.get("translation") or "").strip()
-    if not pattern or not translation:
+    if not phrase or not translation:
         return None
-    left = pattern
+    left = phrase
     transcription = re.sub(r"^\[+|\]+$", "", (entry.get("transcription") or "").strip()).strip()
     if transcription:
         left += " [" + transcription + "]"
@@ -82,6 +82,33 @@ def _model_line(entry: dict[str, Any]) -> str | None:
 
 def _fence(name: str, attr: str, body: list[str]) -> list[str]:
     return [f"{{start-{name}{attr}}}", "", *body, "", f"{{end-{name}}}", ""]
+
+
+def _shift_markdown_headings(text: str | None, *, min_level: int = 2) -> str:
+    """Ensure embedded markdown starts its heading structure at `min_level`.
+
+    If the block contains an H1, shift every ATX heading one level deeper so the
+    chapter's own `# H1` remains the only top-level heading. Otherwise leave the
+    existing heading levels unchanged.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    lines = raw.splitlines()
+    has_h1 = any(re.match(r"^#\s+", line) for line in lines)
+    if not has_h1:
+        return raw
+
+    shifted: list[str] = []
+    for line in lines:
+        m = re.match(r"^(#{1,6})(\s+.*)$", line)
+        if not m:
+            shifted.append(line)
+            continue
+        level = len(m.group(1))
+        new_level = min(6, level + (min_level - 1))
+        shifted.append("#" * new_level + m.group(2))
+    return "\n".join(shifted)
 
 
 def _indent2(text: str | None) -> list[str]:
@@ -130,10 +157,10 @@ def render_language_chapter(lesson: dict[str, Any]) -> str:
 
     if lesson.get("form") == "dialog" and lesson.get("turns"):
         out += _fence("dialog", _attrs(lang, script), _dialog_body(lesson["turns"]))
-    elif (source := (lesson.get("source_text") or "").strip()):
+    elif (source := _shift_markdown_headings(lesson.get("source_text"))):
         out += _fence("text", _attrs(lang, script, as_="source"), [source])
 
-    transcription = (lesson.get("transcription") or "").strip()
+    transcription = _shift_markdown_headings(lesson.get("transcription"))
     if transcription:
         out += _fence("text", _attrs(lang, "latn", as_="transcription"), [transcription])
 
@@ -147,14 +174,14 @@ def render_language_chapter(lesson: dict[str, Any]) -> str:
             "dialog", _attrs(tl, ts, as_="translation"),
             _dialog_body(lesson["turns"], field="translation"),
         )
-    elif (translation := (lesson.get("translation") or "").strip()):
+    elif (translation := _shift_markdown_headings(lesson.get("translation"))):
         out += _fence("text", _attrs(tl, ts, as_="translation"), [translation])
 
     questions = [q.strip() for q in (lesson.get("questions") or []) if q and q.strip()]
     if questions:
         out += _fence("questions", _attrs(lang, script), questions)
 
-    grammar = (lesson.get("grammar") or "").strip()
+    grammar = _shift_markdown_headings(lesson.get("grammar"))
     if grammar:
         out += _fence("text", _attrs(tl, ts, as_="grammar"), [grammar])
 
