@@ -84,15 +84,21 @@ scientific base; the reading rules reflect Modern Hebrew pronunciation.
 
 **Vowels (niqqud) — Modern Hebrew values; no historical length grading:**
 
-| Sign | Name | Value | | Sign | Name | Value |
-|------|------|-------|-|------|------|-------|
-| ַ | patah | a | | ֹ / וֹ | holam / vav-holam | o |
-| ָ | qamats | a | | ֻ | qibbuts | u |
-| ֶ | segol | e | | וּ | shureq | u |
-| ֵ | tsere | e | | ְ (vocal) | sheva na | ĕ |
-| ִ | hiriq | i | | ְ (silent) | sheva nach | (silent) |
-| ֲ | hatef-patah | ă | | ֱ | hatef-segol | ĕ |
-| ֳ | hatef-qamats | ŏ | | | | |
+| Sign | Name | Value |
+|------|------|-------|
+| ַ | patah | a |
+| ָ | qamats | a |
+| ֶ | segol | e |
+| ֵ | tsere | e |
+| ִ | hiriq | i |
+| ֲ | hatef-patah | ă |
+| ֳ | hatef-qamats | ŏ |
+| ֹ / וֹ | holam / vav-holam | o |
+| ֻ | qibbuts | u |
+| וּ | shureq | u |
+| ְ (vocal) | sheva na | ĕ |
+| ְ (silent) | sheva nach | (silent) |
+| ֱ | hatef-segol | ĕ |
 
 **Shin / sin dot:**
 
