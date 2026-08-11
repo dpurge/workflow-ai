@@ -67,7 +67,7 @@ def _stub_search(monkeypatch):
     return calls
 
 
-def _responder(form: str, turns=None):
+def _responder(form: str, turns=None, paragraphs=None):
     def responder(inv: AgentInvocation):
         if inv.schema is not None:
             name = inv.schema.__name__
@@ -81,6 +81,14 @@ def _responder(form: str, turns=None):
                          "translation": "Kawa napój kofeina."},
                         {"speaker": None, "text": "Aroma Bohne Tasse.",
                          "translation": "Aromat ziarno filiżanka."},
+                    ]
+                if form == "parallel":
+                    out["paragraphs"] = paragraphs or [
+                        {"text": "Kaffee Getränk Koffein Aroma.",
+                         "translation": "Kawa napój kofeina aromat."},
+                        {"text": "Bohne Tasse Beispiel Wort.",
+                         "translation": "Ziarno filiżanka przykład słowo.",
+                         "transcription": None},
                     ]
                 return out
             if name == "DetectOut":
@@ -152,6 +160,53 @@ def test_compose_dialog_form_renders_dialog_fence(tmp_path, monkeypatch):
     assert "{start-dialog as=translation lang=pol script=latn}" in chapter
     assert "  Kawa napój kofeina." in chapter
     assert "{start-text as=translation" not in chapter
+
+
+def test_compose_parallel_form_renders_parallel_fence(tmp_path, monkeypatch):
+    result, _ = _run(tmp_path, monkeypatch, form="parallel")
+    ctx = result.branches[0].context
+    assert ctx.data["form"] == "parallel"
+    assert len(ctx.data["paragraphs"]) == 2
+    chapter = Path(ctx.data["out_path"]).read_text(encoding="utf-8")
+    # ONE {start-parallel} block, using the TARGET (source) lang/script on the marker
+    assert "{start-parallel lang=deu script=latn}" in chapter
+    # source + translation records, `---`/`===`-separated per cli-tools grammar
+    assert "Kaffee Getränk Koffein Aroma." in chapter
+    assert "Kawa napój kofeina aromat." in chapter
+    assert (
+        "Kaffee Getränk Koffein Aroma.\n\n---\n\nKawa napój kofeina aromat.\n\n===\n\n"
+        "Bohne Tasse Beispiel Wort.\n\n---\n\nZiarno filiżanka przykład słowo."
+    ) in chapter
+    # the separate source/translation prose blocks must NOT also appear —
+    # parallel replaces them entirely, it doesn't add to them
+    assert "{start-text as=source" not in chapter
+    assert "{start-text as=translation" not in chapter
+    assert "{start-text as=transcription" not in chapter
+
+
+def test_compose_parallel_form_with_transcription(tmp_path, monkeypatch):
+    paragraphs = [
+        {"text": "Kaffee Getränk Koffein Aroma.", "translation": "Kawa napój kofeina aromat.",
+         "transcription": "kafeː getrɛŋk"},
+    ]
+    _stub_lang(tmp_path, monkeypatch)
+    _stub_search(monkeypatch)
+    ebook_yml = _project(tmp_path)
+    graph = WorkflowGraph.from_yaml(WORKFLOWS / "ebook" / "workflow.yaml")
+    engine = Engine(ScriptedBackend(_responder("parallel", paragraphs=paragraphs)))
+    result = engine.run(
+        graph,
+        "Coffee culture",
+        initial_data={"ebook_yml": str(ebook_yml), "kind": "lang",
+                      "language": "deu", "script": "latn",
+                      "form": "parallel", "level": "a2", "max_searches": 24, "wire": False},
+    )
+    chapter = Path(result.branches[0].context.data["out_path"]).read_text(encoding="utf-8")
+    # 3-field record: source `---` translation `---` transcription
+    assert (
+        "Kaffee Getränk Koffein Aroma.\n\n---\n\nKawa napój kofeina aromat.\n\n---\n\n"
+        "kafeː getrɛŋk"
+    ) in chapter
 
 
 def test_evidence_gathered_from_stub(tmp_path, monkeypatch):

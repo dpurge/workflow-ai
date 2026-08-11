@@ -5,6 +5,17 @@ the original foreign-language text, a romanized transliteration of
 it, and the Polish translation. One component, one set of rules. An
 `as` attribute marks the role the block plays:
 
+> **Relationship to cli-tools' `{start-parallel}` block**: the three
+> `<Text as="source"/"transcription"/"translation">` components below solve
+> the same problem cli-tools' `{start-parallel}` markdown block solves —
+> source + translation (+ optional transcription) side by side — just for a
+> different renderer (Docusaurus MDX here, vs. EPUB/PDF there) and with a
+> different syntax (three stacked components vs. one block with `---`/`===`-
+> separated records). They are not interchangeable output formats; this
+> `web` skill never emits `{start-parallel}` markdown. If you need the
+> literal cli-tools block syntax, see `phraseforge-ebook/references/
+> ebook-format.md` in `agent-tools` instead.
+
 | `as` value         | Role                                                          | Default |
 | ------------------ | ------------------------------------------------------------- | ------- |
 | `source`           | Primary foreign-language text                                 | yes     |

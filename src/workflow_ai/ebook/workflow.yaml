@@ -69,8 +69,16 @@ nodes:
       For form 'dialog', return `turns`: for EACH turn set `speaker` (optional),
       `text` (the utterance in the target language, reusing evidence phrasing), AND
       `translation` (that same turn translated into the reader's language). Do not
-      put speaker names inside `text`/`translation`. ALWAYS also fill the top-level
-      `text` with the whole lesson text. Return JSON only.
+      put speaker names inside `text`/`translation`.
+      For form 'parallel', return `paragraphs`: for EACH paragraph of the lesson
+      set `text` (that paragraph in the target language, reusing evidence phrasing),
+      `translation` (that SAME paragraph translated into the reader's language), and
+      OPTIONALLY `transcription` (a romanization of that paragraph — fill it only
+      when the target script is non-Latin, e.g. arab/hans/jpan/kore/hebr; leave it
+      out for Latin/Cyrillic/Greek scripts). One `paragraphs` entry per source
+      paragraph, in the same order — this is what lets the reader's translation and
+      the transcription line up paragraph-for-paragraph with the source.
+      ALWAYS also fill the top-level `text` with the whole lesson text. Return JSON only.
     schema: compose_out
     updater: store_compose
     verifier: ground_check

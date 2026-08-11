@@ -9,6 +9,10 @@ Mirrors the cli-tools `ebook` builder's fence contract:
     because the vocabulary parser splits on the RIGHTMOST `=`).
   - models:     `phrase [transcription] = translation` (first ` = ` splits).
   - text:       raw markdown, `as=` in {source, transcription, translation, grammar}.
+  - parallel:   records separated by a lone `===` line; each record is 1-3
+    fields separated by a lone `---` line — source, translation, transcription
+    (in that order; the last two optional). Replaces the separate source/
+    transcription/translation text blocks for form == "parallel".
   - questions:  one question per line.
   - every chapter starts with an `# H1`.
 """
@@ -134,6 +138,45 @@ def _dialog_body(turns: list[dict[str, Any]], field: str = "text") -> list[str]:
     return lines
 
 
+def _parallel_body(paragraphs: list[dict[str, Any]]) -> list[str]:
+    """Render parallel-text paragraphs as `{start-parallel}` records: each
+    paragraph becomes one record — source `---` translation `---`
+    transcription — records joined by a lone `===` line. Mirrors the
+    cli-tools parser's split-on-every-lone-separator grammar exactly
+    (`\\n---\\n` / `\\n===\\n`, TrimSpace per field).
+
+    A paragraph with a source but no translation still gets a record (as a
+    1-field, source-only record) rather than being silently dropped — losing
+    a whole paragraph of source text because the LLM forgot a translation
+    would be worse than an incomplete record. Transcription is only ever
+    attached when a translation is also present (matches cli-tools SPECS
+    §5.3's "transcription only meaningful if field 2 present" convention).
+    """
+    records: list[list[str]] = []
+    for p in paragraphs or []:
+        source = (p.get("text") or "").strip()
+        if not source:
+            continue
+        fields = [source]
+        translation = (p.get("translation") or "").strip()
+        if translation:
+            fields.append(translation)
+            transcription = (p.get("transcription") or "").strip()
+            if transcription:
+                fields.append(transcription)
+        records.append(fields)
+
+    lines: list[str] = []
+    for ridx, fields in enumerate(records):
+        if ridx:
+            lines += ["", "===", ""]
+        for fidx, field in enumerate(fields):
+            if fidx:
+                lines += ["", "---", ""]
+            lines.append(field)
+    return lines
+
+
 def render_language_chapter(lesson: dict[str, Any]) -> str:
     """Render an assembled lesson dict into a fenced chapter. Source is a text
     block, or a `{start-dialog}` when form == dialog; block order matches the
@@ -155,27 +198,34 @@ def render_language_chapter(lesson: dict[str, Any]) -> str:
     if model_body:
         out += _fence("models", _attrs(lang, script), model_body)
 
-    if lesson.get("form") == "dialog" and lesson.get("turns"):
-        out += _fence("dialog", _attrs(lang, script), _dialog_body(lesson["turns"]))
-    elif (source := _shift_markdown_headings(lesson.get("source_text"))):
-        out += _fence("text", _attrs(lang, script, as_="source"), [source])
+    if lesson.get("form") == "parallel" and lesson.get("paragraphs"):
+        # One {start-parallel} block replaces the separate source/
+        # transcription/translation {start-text} blocks below entirely —
+        # source+translation(+transcription) are ALWAYS emitted together as
+        # paired records here, never as standalone prose sections.
+        out += _fence("parallel", _attrs(lang, script), _parallel_body(lesson["paragraphs"]))
+    else:
+        if lesson.get("form") == "dialog" and lesson.get("turns"):
+            out += _fence("dialog", _attrs(lang, script), _dialog_body(lesson["turns"]))
+        elif (source := _shift_markdown_headings(lesson.get("source_text"))):
+            out += _fence("text", _attrs(lang, script, as_="source"), [source])
 
-    transcription = _shift_markdown_headings(lesson.get("transcription"))
-    if transcription:
-        out += _fence("text", _attrs(lang, "latn", as_="transcription"), [transcription])
+        transcription = _shift_markdown_headings(lesson.get("transcription"))
+        if transcription:
+            out += _fence("text", _attrs(lang, "latn", as_="transcription"), [transcription])
 
-    # A dialog gets a parallel translated dialog ({start-dialog as=translation});
-    # otherwise the translation is a prose text block.
-    translation_turns = [
-        t for t in (lesson.get("turns") or []) if (t.get("translation") or "").strip()
-    ]
-    if lesson.get("form") == "dialog" and translation_turns:
-        out += _fence(
-            "dialog", _attrs(tl, ts, as_="translation"),
-            _dialog_body(lesson["turns"], field="translation"),
-        )
-    elif (translation := _shift_markdown_headings(lesson.get("translation"))):
-        out += _fence("text", _attrs(tl, ts, as_="translation"), [translation])
+        # A dialog gets a parallel translated dialog ({start-dialog as=translation});
+        # otherwise the translation is a prose text block.
+        translation_turns = [
+            t for t in (lesson.get("turns") or []) if (t.get("translation") or "").strip()
+        ]
+        if lesson.get("form") == "dialog" and translation_turns:
+            out += _fence(
+                "dialog", _attrs(tl, ts, as_="translation"),
+                _dialog_body(lesson["turns"], field="translation"),
+            )
+        elif (translation := _shift_markdown_headings(lesson.get("translation"))):
+            out += _fence("text", _attrs(tl, ts, as_="translation"), [translation])
 
     questions = [q.strip() for q in (lesson.get("questions") or []) if q and q.strip()]
     if questions:

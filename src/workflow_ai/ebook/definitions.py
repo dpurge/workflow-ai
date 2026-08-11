@@ -58,6 +58,10 @@ _GROUND_MIN_TOKEN = 4     # ignore tokens shorter than this when stemming
 _GROUND_OVERLAP_BY_FORM = {
     "text": (0.50, 0.25),
     "dialog": (0.40, 0.08),
+    # parallel's source paragraphs are straight prose (not restructured into
+    # turns like dialog), so it gates identically to "text" — explicit here
+    # for clarity even though it matches _GROUND_OVERLAP_DEFAULT.
+    "parallel": (0.50, 0.25),
 }
 _GROUND_OVERLAP_DEFAULT = (0.50, 0.25)
 # Minimum composed learner-text length (chars), scaled by CEFR level — an A1
@@ -293,13 +297,15 @@ def gather_lang_evidence(context: WorkflowContext) -> dict[str, Any]:
 
 @updater("store_compose")
 def store_compose(output: ComposeOut, context: WorkflowContext) -> WorkflowContext:
-    """Store the composed learner text (+ dialog turns) so the normal pipeline
-    (detect → vocabulary → … → render) can consume it."""
+    """Store the composed learner text (+ dialog turns / parallel paragraphs) so
+    the normal pipeline (detect → vocabulary → … → render) can consume it."""
     context.data["text"] = output.text
     context.data["text_snippet"] = (output.text or "")[:400]
     context.data["form"] = output.form
     if output.form == "dialog" and output.turns:
         context.data["turns"] = [t.model_dump() for t in output.turns]
+    if output.form == "parallel" and output.paragraphs:
+        context.data["paragraphs"] = [p.model_dump() for p in output.paragraphs]
     return context
 
 
@@ -373,6 +379,7 @@ def _assemble_lesson(d: dict[str, Any]) -> dict[str, Any]:
         "questions": d.get("questions") or [],
         "form": d.get("form"),
         "turns": d.get("turns"),
+        "paragraphs": d.get("paragraphs"),
     }
 
 

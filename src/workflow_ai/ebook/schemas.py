@@ -181,13 +181,32 @@ class DialogTurnOut(BaseModel):
     )
 
 
+class ParallelParagraphOut(BaseModel):
+    text: str = Field(description="One paragraph's text in the TARGET (lesson) language.")
+    translation: str = Field(
+        description="This same paragraph translated into the reader's (book) language."
+    )
+    transcription: str | None = Field(
+        default=None,
+        description="Romanization of this paragraph. Fill it ONLY when the target script "
+        "is non-Latin (arab, hans, jpan, kore, hebr, …); leave null for Latin/Cyrillic/Greek "
+        "scripts. Rendered in Latin script regardless of the target script.",
+    )
+
+
 class ComposeOut(BaseModel):
-    form: Literal["text", "dialog"]
+    form: Literal["text", "dialog", "parallel"]
     title: str | None = None
     text: str = Field(
-        description="Flattened learner text (prose, or dialog turns joined) — used by the "
-        "downstream steps and the grounding check; always populated."
+        description="Flattened learner text (prose, or dialog turns/parallel paragraphs "
+        "joined) — used by the downstream steps and the grounding check; always populated."
     )
     turns: list[DialogTurnOut] | None = Field(
         default=None, description="Dialog turns, only when form == dialog."
+    )
+    paragraphs: list[ParallelParagraphOut] | None = Field(
+        default=None,
+        description="Parallel-text paragraphs (source + translation, optional "
+        "transcription), only when form == parallel. One entry per source paragraph, "
+        "in order — this is what makes cli-tools' {start-parallel} records line up.",
     )
